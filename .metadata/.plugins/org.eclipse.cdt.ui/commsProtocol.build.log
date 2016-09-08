@@ -1,0 +1,164 @@
+00:00:19 **** Build of configuration Release for project commsProtocol ****
+make all 
+arduino/subdir.mk:258: warning: overriding commands for target `arduino/wiring_pulse.o'
+arduino/subdir.mk:251: warning: ignoring old commands for target `arduino/wiring_pulse.o'
+Building file: ../src/blinky.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"src/blinky.d" -MT"src/blinky.o" -c -o "src/blinky.o" "../src/blinky.cpp"
+Finished building: ../src/blinky.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/CDC.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/CDC.d" -MT"arduino/CDC.o" -c -o "arduino/CDC.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/CDC.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/CDC.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/HardwareSerial.d" -MT"arduino/HardwareSerial.o" -c -o "arduino/HardwareSerial.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial0.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/HardwareSerial0.d" -MT"arduino/HardwareSerial0.o" -c -o "arduino/HardwareSerial0.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial0.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial0.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial1.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/HardwareSerial1.d" -MT"arduino/HardwareSerial1.o" -c -o "arduino/HardwareSerial1.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial1.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial1.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial2.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/HardwareSerial2.d" -MT"arduino/HardwareSerial2.o" -c -o "arduino/HardwareSerial2.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial2.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial2.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial3.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/HardwareSerial3.d" -MT"arduino/HardwareSerial3.o" -c -o "arduino/HardwareSerial3.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial3.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/HardwareSerial3.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/IPAddress.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/IPAddress.d" -MT"arduino/IPAddress.o" -c -o "arduino/IPAddress.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/IPAddress.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/IPAddress.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/PluggableUSB.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/PluggableUSB.d" -MT"arduino/PluggableUSB.o" -c -o "arduino/PluggableUSB.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/PluggableUSB.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/PluggableUSB.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/Print.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/Print.d" -MT"arduino/Print.o" -c -o "arduino/Print.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/Print.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/Print.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/Stream.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/Stream.d" -MT"arduino/Stream.o" -c -o "arduino/Stream.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/Stream.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/Stream.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/Tone.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/Tone.d" -MT"arduino/Tone.o" -c -o "arduino/Tone.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/Tone.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/Tone.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/USBCore.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/USBCore.d" -MT"arduino/USBCore.o" -c -o "arduino/USBCore.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/USBCore.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/USBCore.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/WInterrupts.c
+Invoking: AVR Compiler
+avr-gcc -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -std=gnu99 -funsigned-char -funsigned-bitfields -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/WInterrupts.d" -MT"arduino/WInterrupts.o" -c -o "arduino/WInterrupts.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/WInterrupts.c"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/WInterrupts.c
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/WMath.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/WMath.d" -MT"arduino/WMath.o" -c -o "arduino/WMath.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/WMath.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/WMath.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/WString.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/WString.d" -MT"arduino/WString.o" -c -o "arduino/WString.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/WString.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/WString.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/abi.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/abi.d" -MT"arduino/abi.o" -c -o "arduino/abi.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/abi.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/abi.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/hooks.c
+Invoking: AVR Compiler
+avr-gcc -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -std=gnu99 -funsigned-char -funsigned-bitfields -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/hooks.d" -MT"arduino/hooks.o" -c -o "arduino/hooks.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/hooks.c"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/hooks.c
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/main.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/main.d" -MT"arduino/main.o" -c -o "arduino/main.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/main.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/main.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/new.cpp
+Invoking: AVR C++ Compiler
+avr-g++ -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -funsigned-char -funsigned-bitfields -fno-exceptions -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/new.d" -MT"arduino/new.o" -c -o "arduino/new.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/new.cpp"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/new.cpp
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring.c
+Invoking: AVR Compiler
+avr-gcc -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -std=gnu99 -funsigned-char -funsigned-bitfields -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/wiring.d" -MT"arduino/wiring.o" -c -o "arduino/wiring.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring.c"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring.c
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring_analog.c
+Invoking: AVR Compiler
+avr-gcc -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -std=gnu99 -funsigned-char -funsigned-bitfields -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/wiring_analog.d" -MT"arduino/wiring_analog.o" -c -o "arduino/wiring_analog.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring_analog.c"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring_analog.c
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring_digital.c
+Invoking: AVR Compiler
+avr-gcc -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -std=gnu99 -funsigned-char -funsigned-bitfields -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/wiring_digital.d" -MT"arduino/wiring_digital.o" -c -o "arduino/wiring_digital.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring_digital.c"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring_digital.c
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring_pulse.c
+Invoking: AVR Compiler
+avr-gcc -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -std=gnu99 -funsigned-char -funsigned-bitfields -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/wiring_pulse.d" -MT"arduino/wiring_pulse.o" -c -o "arduino/wiring_pulse.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring_pulse.c"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring_pulse.c
+ 
+Building file: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring_shift.c
+Invoking: AVR Compiler
+avr-gcc -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard" -I"C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino" -Wall -Os -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -std=gnu99 -funsigned-char -funsigned-bitfields -mmcu=atmega328p -DF_CPU=16000000UL -MMD -MP -MF"arduino/wiring_shift.d" -MT"arduino/wiring_shift.o" -c -o "arduino/wiring_shift.o" "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring_shift.c"
+Finished building: C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/wiring_shift.c
+ 
+Building target: commsProtocol.elf
+Invoking: AVR C++ Linker
+avr-g++ -Wl,-Map,commsProtocol.map,--cref -mrelax -Wl,--gc-sections -mmcu=atmega328p -o "commsProtocol.elf"  ./src/blinky.o  ./arduino/CDC.o ./arduino/HardwareSerial.o ./arduino/HardwareSerial0.o ./arduino/HardwareSerial1.o ./arduino/HardwareSerial2.o ./arduino/HardwareSerial3.o ./arduino/IPAddress.o ./arduino/PluggableUSB.o ./arduino/Print.o ./arduino/Stream.o ./arduino/Tone.o ./arduino/USBCore.o ./arduino/WInterrupts.o ./arduino/WMath.o ./arduino/WString.o ./arduino/abi.o ./arduino/hooks.o ./arduino/main.o ./arduino/new.o ./arduino/wiring.o ./arduino/wiring_analog.o ./arduino/wiring_digital.o ./arduino/wiring_pulse.o ./arduino/wiring_shift.o   
+Finished building target: commsProtocol.elf
+ 
+Invoking: AVR Create Extended Listing
+avr-objdump -h -S commsProtocol.elf  >"commsProtocol.lss"
+Finished building: commsProtocol.lss
+ 
+Create Flash image (ihex format)
+avr-objcopy -R .eeprom -R .fuse -R .lock -R .signature -O ihex commsProtocol.elf  "commsProtocol.hex"
+Finished building: commsProtocol.hex
+ 
+Create eeprom image (ihex format)
+avr-objcopy -j .eeprom --no-change-warnings --change-section-lma .eeprom=0 -O ihex commsProtocol.elf  "commsProtocol.eep"
+Finished building: commsProtocol.eep
+ 
+Invoking: Print Size
+avr-size --format=avr --mcu=atmega328p commsProtocol.elf
+AVR Memory Usage
+----------------
+Device: atmega328p
+
+Program:    2828 bytes (8.6% Full)
+(.text + .data + .bootloader)
+
+Data:        217 bytes (10.6% Full)
+(.data + .bss + .noinit)
+
+
+Finished building: sizedummy
+ 
+
+00:00:29 Build Finished (took 9s.623ms)
+
