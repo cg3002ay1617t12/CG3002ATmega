@@ -1,15 +1,17 @@
 #include <Arduino_FreeRTOS.h>
 
+char booted = '0';
+
 void serialRead( void *pvParameters );
 
 // the setup function runs once when you press reset or power the board
 void setup() {
   // setup serial ports
-  Serial.begin(115200);
   Serial3.begin(115200);
+  Serial.begin(115200);
 
-  Serial.println("hihi");
-  
+  Serial.println("hi");
+
   xTaskCreate(
     serialRead
     ,  (const portCHAR *)"serialRead"   // A name just for humans
@@ -17,14 +19,10 @@ void setup() {
     ,  NULL
     ,  2  // priority
     ,  NULL );
- 
-    
-  // Now the task scheduler, which takes over control of scheduling individual tasks, is automatically started.
 }
 
 void loop()
 {
-  // Empty. Things are done in Tasks.  
 }
 
 /*--------------------------------------------------*/
@@ -34,12 +32,20 @@ void loop()
 void serialRead(void *pvParameters)  // This is a task.
 {
   int incomingByte = 0;
+  for (;;){
+    if (Serial3.available() > 0){
+      incomingByte = Serial3.read();
+      if (booted == '1'){
+        booted = '0';
+        Serial.println("init");
+      } else {
+        Serial.println("running");
+      }
+  //    Serial.print("I received: ");
+  //    Serial.println(incomingByte, DEC);
+    }
   
-  if (Serial3.available() > 0){
-    incomingByte = Serial3.read();
-    Serial.print("I received: ");
-    Serial.println(incomingByte, DEC);
+    vTaskDelay(10); 
   }
-  
 }
 
