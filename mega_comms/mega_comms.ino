@@ -1,15 +1,19 @@
 #include <Arduino_FreeRTOS.h>
 
 char booted = '0';
+int bufferSize = 0;
 
 void serialRead( void *pvParameters );
 
 // the setup function runs once when you press reset or power the board
 void setup() {
+  
   // setup serial ports
   Serial3.begin(115200);
+  while (!Serial3);
   Serial.begin(115200);
-
+  while (!Serial);
+  
   Serial.println("hi");
 
   xTaskCreate(
@@ -33,16 +37,16 @@ void serialRead(void *pvParameters)  // This is a task.
 {
   int incomingByte = 0;
   for (;;){
-    if (Serial3.available() > 0){
-      incomingByte = Serial3.read();
+    bufferSize = Serial3.available();
+    if (bufferSize> 1){
       if (booted == '1'){
         booted = '0';
-        Serial.println("init");
+        Serial.println("SYSTEM BOOT");
       } else {
-        Serial.println("running");
+        incomingByte = Serial.read();
+        Serial.println(incomingByte, DEC);
+        Serial3.read();
       }
-  //    Serial.print("I received: ");
-  //    Serial.println(incomingByte, DEC);
     }
   
     vTaskDelay(10); 
