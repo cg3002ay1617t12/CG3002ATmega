@@ -278,7 +278,8 @@ char convert8CRC(){
 }
 
 void handleData(int componentID, int data){
-  
+  Serial.println(componentID);
+  Serial.println(data);
 }
 
 // sample
