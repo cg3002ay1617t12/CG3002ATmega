@@ -10,14 +10,15 @@ enum commsType {NEUTRAL, HELLO, ACK, NACK, PROBE, REQUEST, DATA};
 char booted = '0';
 char sendSequence = '0';
 
+// variable for reciev
 const int  dataSize = 8;
-//const int crcSize = 1;
-
 int numArray[8] = {0};
 char crc = '0';
 char packet_seq = '0';
 int data = 0;
 
+
+// variables for last handling NACK
 char lastPacketType = '0' ;
 int lastComponentId = 0;
 int lastPayload = 0;
@@ -77,33 +78,29 @@ void serialRead(void *pvParameters)  // This is a task.
  
   int dataIndex = 0; 
   int componentID = 0;
-  int crcIndex = 0;
-  int crcData[4] = {0};
   
   txrxMode CurrMode = READY;
   commsType packetType = NEUTRAL;
 
   for (;;){
-
-    if (Serial.available()>0){
-      Serial.read();
-      Serial.println("txing");
-      sendPacket(',',31,2000);
-    }
-    
+//    if (Serial.available()>0){
+//      Serial.read();
+//      Serial.println("txing");
+//      sendPacket(',',31,2000);
+//    }
+//    
     if (Serial3.available()>0){
-      
       incomingByte = Serial3.read();
                
-      switch(CurrMode) {
-         case READY :
+      switch(CurrMode) {            
+         case READY :       // Syncing up to for packet opening
             if (incomingByte == 60){
               CurrMode = PACKET_TYPE;
               packetType = NEUTRAL;
               Serial.println("Recieved Start");
             }
-            break; /* optional */
-         case PACKET_TYPE :
+            break;
+         case PACKET_TYPE : // Determind what kind of packet is being recieved
            switch(incomingByte){
               case 40 :
                 Serial.println("Recieved HELLO");
@@ -257,7 +254,7 @@ void sendPacket(char packetType, int componentId, int payload) {
 void sendHello(){
   Serial3.write('<'); 
   Serial3.write('('); 
-  Serial3.write('<'); 
+  Serial3.write('>'); 
   Serial3.flush();
 }
 
@@ -265,12 +262,27 @@ void sendHello(){
 
 void sendACK(){
   packet_seq = !packet_seq;
-  sendPacket(')',1,666);
+//  char sent = '0';
+//  while (sent == '0'){
+//    if( xSemaphore != NULL ){
+//      if( xSemaphoreTake( xSemaphore, ( TickType_t )LONG_TIME ) == pdTRUE){
+        sendPacket(')',1,666);
+//        sent = '1';
+//      }
+//    }
+//  }
 }
 
 // assumes that hello will never corrupt
 void sendNACK(){
-  sendPacket('*',1,666);
+//  while (sent == '0'){
+//    if( xSemaphore != NULL ){
+//      if( xSemaphoreTake( xSemaphore, ( TickType_t )LONG_TIME ) == pdTRUE){
+        sendPacket('*',1,666);
+//        sent = '1';
+//      }
+//    }
+//  }
 }
 
 char convert8CRC(){
