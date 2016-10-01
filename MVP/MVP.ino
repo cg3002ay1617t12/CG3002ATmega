@@ -1,48 +1,49 @@
 #include <Arduino_FreeRTOS.h>
+#include <Wire.h>
+#include <LSM303.h>
+
+LSM303 imu1;
 
 // Constants
-#define dataSize 8
-#define PACKET_SIZE 14
+#define PACKET_SIZE 64
 
-// Symbols used
-#define STARTFRAME 60
-#define ENDFRAME 62
-#define HELLOSIGN 40
-#define ACKSIGN 41
-#define NACKSIGN 42
+// ASCII used for Recieving
+#define ASCII_STARTFRAME 60
+#define ASCII_ENDFRAME 62
+#define ASCII_HELLO 49
+#define ASCII_DATA 50
+#define ASCII_ACK 51
+#define DUMMY_CRC 49
 
-enum TXrxMode {READY, PACKET_TYPE, PAYLOAD_LENGTH, PACKET_SEQ, COMPONENT_ID , PAYLOAD, CRC, TERMINATE, CORRUPT};
-enum PacketType {NEUTRAL, HELLO, ACK};
+#define HANDSHAKE_SIZE 3
+#define DATA_OFFSET 4
+#define CRC_LENGTH 2
 
-// variables for receiving data
-TXrxMode CurrMode = READY;
-PacketType packetType = NEUTRAL;
-char recieveSequence = '0';
-char expectedSequence = '0';
+// States used for Recieving
+enum RxState {READY, PACKET_TYPE, TERMINATE};
+enum PacketType {UNDETERMINED, HELLO, ACK};
+
+// Variables for receiving data
+RxState CurrMode = READY;
+PacketType packetType = UNDETERMINED;
 int incomingByte = 0;
-int dataIndex = 0; 
-int componentID = 0;
-int data = 0;
 
-// variables for sending data
+// Variables for sending data
 char handshake = '0';   // start sending data only after handshake
 char readyToSend = '0'; // to support stop and wait
-char dataSendArray[PACKET_SIZE] = {0};
-char sendSequence = '0';
-char crc = '0';
-int lastID = 0 ;
-int lastData = 0;
+char packetSendArray[PACKET_SIZE] = {0};
+char crc[2] = {00};
 
 // task declaration
-void serialRead( void *pvParameters );
-void sendSAMPLEData(void *pvParameters);
+void serialRead(void *pvParameters);
+void IMUONEread(void *pvParameters);
+void sendIMUONEAccData(void *pvParameters);
+void sendIMUONECompassData(void *pvParameters);
 
 // function declaration
-void convert8Data(int num);
-char convert8CRC();
-void prepDataPacket(int fromComponentID, int dataToSend);
-void sendPacket(char packetType, int componentId, int payload );
-void flipSendSequence();
+void frameAndSendPacket(int fromComponentID, int dataToSend);
+void sendHello();
+void generateCRC(int frameSize);
 
 void setup() {
   // setup serial ports
@@ -51,25 +52,57 @@ void setup() {
   Serial.begin(115200);
   while (!Serial);  // to ensure that Serial is setup
 
-  Serial.println("Initializing Mega");
-  
+  // init(s) for sensors
+  Wire.begin();
+
+  // INIT IMU1
+  imu1.init();
+  imu1.enableDefault();
+  /*
+  Calibration values; the default values of +/-32767 for each axis
+  lead to an assumed magnetometer bias of 0. Use the Calibrate example
+  program to determine appropriate values for your particular unit.
+  */
+  imu1.m_min = (LSM303::vector<int16_t>){-32767, -32767, -32767};
+  imu1.m_max = (LSM303::vector<int16_t>){+32767, +32767, +32767};
+
   sendHello();
+
+  Serial.println("Initialized Mega");
 
   xTaskCreate(
     serialRead
     ,  (const portCHAR *)"serialRead"   // A name just for humans
     ,  128  // Stack size
     ,  NULL
-    ,  2  // priority
+    ,  10  // priority
     ,  NULL );
 
-  xTaskCreate(
-    sendSAMPLEData
-    ,  (const portCHAR *)"sendSAMPLEData"   // A name just for humans
+   xTaskCreate(
+    IMUONEread
+    ,  (const portCHAR *)"IMUONEread"   // A name just for humans
+    ,  128  // Stack size
+    ,  NULL
+    ,  5  // priority
+    ,  NULL );
+
+   xTaskCreate(
+    sendIMUONEAccData
+    ,  (const portCHAR *)"sendIMUONEAccData"   // A name just for humans
     ,  128  // Stack size
     ,  NULL
     ,  3  // priority
     ,  NULL );
+    
+
+//   xTaskCreate(
+//    sendIMUONECompassData
+//    ,  (const portCHAR *)"sendIMUONECompassData"   // A name just for humans
+//    ,  128  // Stack size
+//    ,  NULL
+//    ,  4  // priority
+//    ,  NULL );
+    
 }
 
 void loop() {
@@ -85,65 +118,35 @@ void serialRead(void *pvParameters)  // This is a task.
   for (;;){
     if (Serial3.available() > 0){
       incomingByte = Serial3.read();
+      Serial.print(incomingByte);
       switch(CurrMode) {            
          case READY :       // Syncing up to for packet opening
-            if (incomingByte == STARTFRAME){
+            if (incomingByte == ASCII_STARTFRAME){
               CurrMode = PACKET_TYPE;
-              packetType = NEUTRAL; 
+              packetType = UNDETERMINED; 
               Serial.println("Recieved Start");
             }
             break;
          case PACKET_TYPE : // Determind what kind of packet is being recieved
            switch(incomingByte){
-              case HELLOSIGN :
+              case ASCII_HELLO :
                 Serial.println("Recieved HELLO");
                 packetType = HELLO;
                 CurrMode = TERMINATE;
                 break;
-              case ACKSIGN :
+              case ASCII_ACK :
                 Serial.println("Recieved ACK");
                 packetType = ACK;
-                CurrMode = PACKET_SEQ;
+                CurrMode = TERMINATE;
                 break;
               default :
-                CurrMode = CORRUPT;
-                Serial.println("CORRUPT");
+                CurrMode = READY;
+                Serial.println("CORRUPT, resetting to READY");
            }
-          break;
-        case PACKET_SEQ : // check to see what frame PI is expecting
-          Serial.println("Payload_seq");
-          expectedSequence = incomingByte;
-          CurrMode = COMPONENT_ID;
-          break;
-        case COMPONENT_ID :
-          Serial.println("component_id");
-          componentID = incomingByte;
-          CurrMode = PAYLOAD;
-          break;
-        case PAYLOAD :
-          Serial.println("payload");
-          if ( dataIndex < dataSize ){
-            data = data + incomingByte;
-            dataIndex = dataIndex + 1;
-            if (dataIndex >= dataSize){
-              dataIndex = 0;
-              CurrMode = CRC;
-            }
-          } 
-          break; 
-        case CRC :
-          Serial.println("crc");
-          crc = incomingByte;
-          if (crc == '1'){
-            CurrMode = TERMINATE;
-          } else {
-            CurrMode = CORRUPT;
-            Serial.println("CORRUPT");
-          }
           break;
         case TERMINATE:
           Serial.println("terminate");
-          if (incomingByte == ENDFRAME){
+          if (incomingByte == ASCII_ENDFRAME){
             CurrMode = READY;
             if (packetType == HELLO){
               handshake = '1';
@@ -154,27 +157,80 @@ void serialRead(void *pvParameters)  // This is a task.
               readyToSend = '1';
             }
           } else {
-            CurrMode = CORRUPT;
-            Serial.println("CORRUPT");
-          }
-          break;
-        case CORRUPT:
-          Serial.println("handling corrupt packet");
-          CurrMode = READY;
+            CurrMode = READY;
+            Serial.println("CORRUPT, resetting to READY");
+          }       
       }
     }
     vTaskDelay(10); 
   }
 }
 
-// sample send data task
-void sendSAMPLEData(void *pvParameters) {
+//send IMU task
+
+void IMUONEread(void *pvParameters) {
+  while (1){
+    imu1.read();
+    vTaskDelay(1);
+  }
+}
+
+
+void sendIMUONEAccData(void *pvParameters) {
+  int datalength = 0;
+  char tempX[6] = {0};
+  char tempY[6] = {0};
+  char tempZ[6] = {0};
+  double x = 0;
+  double y = 0;
+  double z = 0;
   while(1){
     if (readyToSend == '1'){
-      prepDataPacket(10, 2000);
-      sendPacket();
+      datalength = DATA_OFFSET;
+      x = (imu1.a.x / 1600.0);
+      y = (imu1.a.y / 1600.0);
+      z = (imu1.a.z / 1600.0);
+  
+      // setting up x
+      dtostrf(x, 4, 2, tempX);
+      sprintf(packetSendArray+datalength,"%s", tempX);
+      datalength += 6;
+      packetSendArray[++datalength] = ',';
+      ++datalength;
+  
+      // setting up y
+      dtostrf(y, 4, 2, tempY);
+      sprintf(packetSendArray+datalength,"%s", tempY);
+      datalength += 6;
+      packetSendArray[++datalength] = ',';
+      ++datalength;
+  
+      // setting up z
+      dtostrf(z, 4, 2, tempZ);
+      sprintf(packetSendArray+datalength,"%s", tempZ);
+      datalength += 6;
+       
+      frameAndSendPacket(1, datalength);
     }
-    vTaskDelay(10); 
+    vTaskDelay(2);
+  }
+}
+
+void sendIMUONECompassData(void *pvParameters) {
+  int datalength = 0;
+  float currheading = 0;
+  char tempCompass[6] = {0};
+  while(1){
+    if (readyToSend == '1'){
+      datalength = DATA_OFFSET;
+      currheading = imu1.heading();
+      // setting up compass
+      dtostrf(currheading, 4, 2, tempCompass);
+      sprintf(packetSendArray+datalength,"%s", tempCompass);
+      datalength += 6;
+      frameAndSendPacket(2, datalength);
+    }
+    vTaskDelay(10);
   }
 }
 
@@ -183,53 +239,27 @@ void sendSAMPLEData(void *pvParameters) {
 /*--------------------------------------------------*/
 
 void sendHello(){
-  Serial3.write("<(>");
+  packetSendArray[0] = ASCII_STARTFRAME;
+  packetSendArray[1] = ASCII_HELLO;
+  packetSendArray[2] = ASCII_ENDFRAME;
+  Serial3.write(packetSendArray,HANDSHAKE_SIZE);
   Serial3.flush();
 }
 
-void prepDataPacket(int fromComponentID, int dataToSend){
-  dataSendArray[0]  = '<';
-  dataSendArray[1]  = '-';
-  dataSendArray[2]  = sendSequence;
-  dataSendArray[3]  = char(fromComponentID);
-  convert8Data(dataToSend); // index 4 to index 11 
-  dataSendArray[12] = convert8CRC();
-  dataSendArray[13] = '>';
-  lastID = fromComponentID; // backup incase of NACK
-  lastData = dataToSend;    // backup incase of NACK
-}
-
-void convert8Data(int num){
-  int count = 8;
-  while (count > 0){
-    count -= 1;
-    if (num >= 255){
-      num -= 255;
-      dataSendArray[count + 4] = 255;
-    } else {
-      dataSendArray[count + 4] = num;
-      num = 0;
-    }
-  }
-}
-
-char convert8CRC(){
-  return (char)48;
-}
-
-void flipSendSequence(){
-  if (sendSequence == '1'){
-    sendSequence = '0';
-  } else {
-    sendSequence = '1';
-  }
-}
-
-void sendPacket(){
-  Serial3.write(dataSendArray,PACKET_SIZE);
+void frameAndSendPacket(int fromComponentID, int dataLength){
+  packetSendArray[0] = ASCII_STARTFRAME;
+  packetSendArray[1] = ASCII_DATA;
+  packetSendArray[2] = fromComponentID;
+  packetSendArray[3] = dataLength;
+  generateCRC(DATA_OFFSET+dataLength);
+  packetSendArray[DATA_OFFSET+dataLength+CRC_LENGTH] = ASCII_ENDFRAME;
+  Serial3.write(packetSendArray,DATA_OFFSET+dataLength+CRC_LENGTH+1);
   Serial3.flush();
-  flipSendSequence();
-  readyToSend = '0';
+}
+
+void generateCRC(int CRCStart){
+  packetSendArray[CRCStart] = DUMMY_CRC;
+  packetSendArray[CRCStart + 1] = DUMMY_CRC;
 }
 
 
