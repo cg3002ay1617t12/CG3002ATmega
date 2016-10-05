@@ -1,8 +1,11 @@
 #include <Arduino_FreeRTOS.h>
+#include <semphr.h>
 #include <Wire.h>
 #include <LSM303.h>
 
 LSM303 imu1;
+SemaphoreHandle_t xSemaphore;
+
 
 // Constants
 #define PACKET_SIZE 64
@@ -67,6 +70,9 @@ void setup() {
   // INIT IMU1
   imu1.init();
   imu1.enableDefault();
+
+  xSemaphore = xSemaphoreCreateMutex();
+  
   /*
   Calibration values; the default values of +/-32767 for each axis
   lead to an assumed magnetometer bias of 0. Use the Calibrate example
@@ -95,13 +101,13 @@ void setup() {
 //    ,  5  // priority
 //    ,  NULL );
 
-//   xTaskCreate(
-//    sendIMUONEAccData
-//    ,  (const portCHAR *)"sendIMUONEAccData"   // A name just for humans
-//    ,  128  // Stack size
-//    ,  NULL
-//    ,  4  // priority
-//    ,  NULL );
+   xTaskCreate(
+    sendIMUONEAccData
+    ,  (const portCHAR *)"sendIMUONEAccData"   // A name just for humans
+    ,  128  // Stack size
+    ,  NULL
+    ,  4  // priority
+    ,  NULL );
 
    xTaskCreate(
     sendIMUONECompassData
@@ -229,7 +235,7 @@ void sendIMUONEAccData(void *pvParameters) {
       datalength += 6;
        
       frameAndSendPacket(1, datalength);
-//      readyToSend = 0;
+      readyToSend = 0;
     }
     vTaskDelay(1);
   }
@@ -241,15 +247,16 @@ void sendIMUONECompassData(void *pvParameters) {
   char tempCompass[6] = {0};
   while(1){
     if (readyToSend == '1'){
+      // insert semaphores here to protect
       datalength = DATA_OFFSET;
-      imu1.read();
+//      imu1.read();  // acc will be reading at higher much higher frequency no need to re-read here
       currheading = imu1.heading();
       // setting up compass
       dtostrf(currheading, 4, 2, tempCompass);
       sprintf(packetSendArray+datalength,"%s", tempCompass);
       datalength += 6;
       frameAndSendPacket(2, datalength);
-//      readyToSend = 0;
+      readyToSend = 0;
     }
     vTaskDelay(1);
   }
@@ -294,7 +301,7 @@ void frameAndSendPacket(int fromComponentID, int dataLength){
   generateCRC(DATA_OFFSET+dataLength);
   packetSendArray[DATA_OFFSET+dataLength+CRC_LENGTH] = ASCII_ENDFRAME;
   Serial3.write(packetSendArray,DATA_OFFSET+dataLength+CRC_LENGTH+1);
-//  Serial3.flush();
+  Serial3.flush();
 }
 
 void generateCRC(int CRCStart){
