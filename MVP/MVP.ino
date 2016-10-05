@@ -19,6 +19,9 @@ LSM303 imu1;
 #define DATA_OFFSET 4
 #define CRC_LENGTH 2
 
+#define Ultra1Trig 52
+#define Ultra1Echo 50
+
 // States used for Recieving
 enum RxState {READY, PACKET_TYPE, TERMINATE};
 enum PacketType {UNDETERMINED, HELLO, ACK};
@@ -39,6 +42,7 @@ void serialRead(void *pvParameters);
 void IMUONEread(void *pvParameters);
 void sendIMUONEAccData(void *pvParameters);
 void sendIMUONECompassData(void *pvParameters);
+void sendUltra1soundDist(void *pvParameters);
 
 // function declaration
 void frameAndSendPacket(int fromComponentID, int dataToSend);
@@ -54,6 +58,11 @@ void setup() {
 
   // init(s) for sensors
   Wire.begin();
+  Wire.setClock(400000);
+
+  // INIT ULTRA1
+  pinMode(Ultra1Trig, OUTPUT);
+  pinMode(Ultra1Echo, INPUT);
 
   // INIT IMU1
   imu1.init();
@@ -78,17 +87,25 @@ void setup() {
     ,  10  // priority
     ,  NULL );
 
-   xTaskCreate(
-    IMUONEread
-    ,  (const portCHAR *)"IMUONEread"   // A name just for humans
-    ,  128  // Stack size
-    ,  NULL
-    ,  5  // priority
-    ,  NULL );
+//   xTaskCreate(
+//    IMUONEread
+//    ,  (const portCHAR *)"IMUONEread"   // A name just for humans
+//    ,  128  // Stack size
+//    ,  NULL
+//    ,  5  // priority
+//    ,  NULL );
+
+//   xTaskCreate(
+//    sendIMUONEAccData
+//    ,  (const portCHAR *)"sendIMUONEAccData"   // A name just for humans
+//    ,  128  // Stack size
+//    ,  NULL
+//    ,  4  // priority
+//    ,  NULL );
 
    xTaskCreate(
-    sendIMUONEAccData
-    ,  (const portCHAR *)"sendIMUONEAccData"   // A name just for humans
+    sendIMUONECompassData
+    ,  (const portCHAR *)"sendIMUONECompassData"   // A name just for humans
     ,  128  // Stack size
     ,  NULL
     ,  3  // priority
@@ -96,8 +113,8 @@ void setup() {
     
 
 //   xTaskCreate(
-//    sendIMUONECompassData
-//    ,  (const portCHAR *)"sendIMUONECompassData"   // A name just for humans
+//    sendUltra1soundDist
+//    ,  (const portCHAR *)"sendUltra1soundDist"   // A name just for humans
 //    ,  128  // Stack size
 //    ,  NULL
 //    ,  4  // priority
@@ -124,18 +141,18 @@ void serialRead(void *pvParameters)  // This is a task.
             if (incomingByte == ASCII_STARTFRAME){
               CurrMode = PACKET_TYPE;
               packetType = UNDETERMINED; 
-              Serial.println("Recieved Start");
+//              Serial.println("Recieved Start");
             }
             break;
          case PACKET_TYPE : // Determind what kind of packet is being recieved
            switch(incomingByte){
               case ASCII_HELLO :
-                Serial.println("Recieved HELLO");
+//                Serial.println("Recieved HELLO");
                 packetType = HELLO;
                 CurrMode = TERMINATE;
                 break;
               case ASCII_ACK :
-                Serial.println("Recieved ACK");
+//                Serial.println("Recieved ACK");
                 packetType = ACK;
                 CurrMode = TERMINATE;
                 break;
@@ -151,14 +168,14 @@ void serialRead(void *pvParameters)  // This is a task.
             if (packetType == HELLO){
               handshake = '1';
               readyToSend = '1';
-              Serial.println("Handshake completed");
+//              Serial.println("Handshake completed");
             }
             if (packetType == ACK){
               readyToSend = '1';
             }
           } else {
             CurrMode = READY;
-            Serial.println("CORRUPT, resetting to READY");
+//            Serial.println("CORRUPT, resetting to READY");
           }       
       }
     }
@@ -168,12 +185,12 @@ void serialRead(void *pvParameters)  // This is a task.
 
 //send IMU task
 
-void IMUONEread(void *pvParameters) {
-  while (1){
-    imu1.read();
-    vTaskDelay(1);
-  }
-}
+//void IMUONEread(void *pvParameters) {
+//  while (1){
+////    imu1.read();
+//    vTaskDelay(1);
+//  }
+//}
 
 
 void sendIMUONEAccData(void *pvParameters) {
@@ -186,6 +203,7 @@ void sendIMUONEAccData(void *pvParameters) {
   double z = 0;
   while(1){
     if (readyToSend == '1'){
+      imu1.read();
       datalength = DATA_OFFSET;
       x = (imu1.a.x / 1600.0);
       y = (imu1.a.y / 1600.0);
@@ -211,12 +229,33 @@ void sendIMUONEAccData(void *pvParameters) {
       datalength += 6;
        
       frameAndSendPacket(1, datalength);
+//      readyToSend = 0;
     }
-    vTaskDelay(2);
+    vTaskDelay(1);
   }
 }
 
 void sendIMUONECompassData(void *pvParameters) {
+  int datalength = 0;
+  float currheading = 0;
+  char tempCompass[6] = {0};
+  while(1){
+    if (readyToSend == '1'){
+      datalength = DATA_OFFSET;
+      imu1.read();
+      currheading = imu1.heading();
+      // setting up compass
+      dtostrf(currheading, 4, 2, tempCompass);
+      sprintf(packetSendArray+datalength,"%s", tempCompass);
+      datalength += 6;
+      frameAndSendPacket(2, datalength);
+//      readyToSend = 0;
+    }
+    vTaskDelay(1);
+  }
+}
+
+void sendUltra1soundDist(void *pvParameters) {
   int datalength = 0;
   float currheading = 0;
   char tempCompass[6] = {0};
@@ -229,6 +268,7 @@ void sendIMUONECompassData(void *pvParameters) {
       sprintf(packetSendArray+datalength,"%s", tempCompass);
       datalength += 6;
       frameAndSendPacket(2, datalength);
+      readyToSend = 0;
     }
     vTaskDelay(10);
   }
@@ -254,7 +294,7 @@ void frameAndSendPacket(int fromComponentID, int dataLength){
   generateCRC(DATA_OFFSET+dataLength);
   packetSendArray[DATA_OFFSET+dataLength+CRC_LENGTH] = ASCII_ENDFRAME;
   Serial3.write(packetSendArray,DATA_OFFSET+dataLength+CRC_LENGTH+1);
-  Serial3.flush();
+//  Serial3.flush();
 }
 
 void generateCRC(int CRCStart){
