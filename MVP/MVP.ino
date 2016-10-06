@@ -18,6 +18,8 @@ SemaphoreHandle_t xSemaphore;
 #define ASCII_ACK 51
 #define DUMMY_CRC 49
 
+#define IMU_RATIO 5
+
 #define HANDSHAKE_SIZE 3
 #define DATA_OFFSET 4
 #define CRC_LENGTH 2
@@ -39,6 +41,7 @@ char handshake = '0';   // start sending data only after handshake
 char readyToSend = '0'; // to support stop and wait
 char packetSendArray[PACKET_SIZE] = {0};
 char crc[2] = {00};
+int  IMUONEaccCount = 0;
 
 // task declaration
 void serialRead(void *pvParameters);
@@ -100,31 +103,31 @@ void setup() {
 //    ,  NULL
 //    ,  5  // priority
 //    ,  NULL );
-
-   xTaskCreate(
-    sendIMUONEAccData
-    ,  (const portCHAR *)"sendIMUONEAccData"   // A name just for humans
-    ,  128  // Stack size
-    ,  NULL
-    ,  4  // priority
-    ,  NULL );
-
-   xTaskCreate(
-    sendIMUONECompassData
-    ,  (const portCHAR *)"sendIMUONECompassData"   // A name just for humans
-    ,  128  // Stack size
-    ,  NULL
-    ,  3  // priority
-    ,  NULL );
-    
-
+//
 //   xTaskCreate(
-//    sendUltra1soundDist
-//    ,  (const portCHAR *)"sendUltra1soundDist"   // A name just for humans
+//    sendIMUONEAccData
+//    ,  (const portCHAR *)"sendIMUONEAccData"   // A name just for humans
 //    ,  128  // Stack size
 //    ,  NULL
 //    ,  4  // priority
 //    ,  NULL );
+//
+//   xTaskCreate(
+//    sendIMUONECompassData
+//    ,  (const portCHAR *)"sendIMUONECompassData"   // A name just for humans
+//    ,  128  // Stack size
+//    ,  NULL
+//    ,  3  // priority
+//    ,  NULL );
+//    
+
+   xTaskCreate(
+    sendUltra1soundDist
+    ,  (const portCHAR *)"sendUltra1soundDist"   // A name just for humans
+    ,  128  // Stack size
+    ,  NULL
+    ,  4  // priority
+    ,  NULL );
     
 }
 
@@ -174,10 +177,12 @@ void serialRead(void *pvParameters)  // This is a task.
             if (packetType == HELLO){
               handshake = '1';
               readyToSend = '1';
+              xSemaphoreGive( xSemaphore );
 //              Serial.println("Handshake completed");
             }
             if (packetType == ACK){
               readyToSend = '1';
+              xSemaphoreGive( xSemaphore );
             }
           } else {
             CurrMode = READY;
@@ -208,34 +213,40 @@ void sendIMUONEAccData(void *pvParameters) {
   double y = 0;
   double z = 0;
   while(1){
-    if (readyToSend == '1'){
-      imu1.read();
-      datalength = DATA_OFFSET;
-      x = (imu1.a.x / 1600.0);
-      y = (imu1.a.y / 1600.0);
-      z = (imu1.a.z / 1600.0);
-  
-      // setting up x
-      dtostrf(x, 4, 2, tempX);
-      sprintf(packetSendArray+datalength,"%s", tempX);
-      datalength += 6;
-      packetSendArray[++datalength] = ',';
-      ++datalength;
-  
-      // setting up y
-      dtostrf(y, 4, 2, tempY);
-      sprintf(packetSendArray+datalength,"%s", tempY);
-      datalength += 6;
-      packetSendArray[++datalength] = ',';
-      ++datalength;
-  
-      // setting up z
-      dtostrf(z, 4, 2, tempZ);
-      sprintf(packetSendArray+datalength,"%s", tempZ);
-      datalength += 6;
-       
-      frameAndSendPacket(1, datalength);
-      readyToSend = 0;
+    if (readyToSend == '1' && IMUONEaccCount <= IMU_RATIO){
+      if( xSemaphoreTake( xSemaphore, ( TickType_t ) 1 ) == pdTRUE ){
+        IMUONEaccCount++;
+        
+        imu1.read();
+        datalength = DATA_OFFSET;
+        x = (imu1.a.x / 1600.0);
+        y = (imu1.a.y / 1600.0);
+        z = (imu1.a.z / 1600.0);
+    
+        // setting up x
+        dtostrf(x, 4, 2, tempX);
+        sprintf(packetSendArray+datalength,"%s", tempX);
+        datalength += 6;
+        packetSendArray[++datalength] = ',';
+        ++datalength;
+    
+        // setting up y
+        dtostrf(y, 4, 2, tempY);
+        sprintf(packetSendArray+datalength,"%s", tempY);
+        datalength += 6;
+        packetSendArray[++datalength] = ',';
+        ++datalength;
+    
+        // setting up z
+        dtostrf(z, 4, 2, tempZ);
+        sprintf(packetSendArray+datalength,"%s", tempZ);
+        datalength += 6;
+         
+        frameAndSendPacket(1, datalength);
+        readyToSend = 0;
+      }
+//      xSemaphoreGive( xSemaphore );
+
     }
     vTaskDelay(1);
   }
@@ -246,17 +257,21 @@ void sendIMUONECompassData(void *pvParameters) {
   float currheading = 0;
   char tempCompass[6] = {0};
   while(1){
-    if (readyToSend == '1'){
-      // insert semaphores here to protect
-      datalength = DATA_OFFSET;
-//      imu1.read();  // acc will be reading at higher much higher frequency no need to re-read here
-      currheading = imu1.heading();
-      // setting up compass
-      dtostrf(currheading, 4, 2, tempCompass);
-      sprintf(packetSendArray+datalength,"%s", tempCompass);
-      datalength += 6;
-      frameAndSendPacket(2, datalength);
-      readyToSend = 0;
+    if (readyToSend == '1' && IMUONEaccCount > IMU_RATIO){
+      if( xSemaphoreTake( xSemaphore, ( TickType_t ) 1 ) == pdTRUE ){
+        IMUONEaccCount = 0;
+        // insert semaphores here to protect
+        datalength = DATA_OFFSET;
+  //      imu1.read();  // acc will be reading at higher much higher frequency no need to re-read here
+        currheading = imu1.heading();
+        // setting up compass
+        dtostrf(currheading, 4, 2, tempCompass);
+        sprintf(packetSendArray+datalength,"%s", tempCompass);
+        datalength += 6;
+        frameAndSendPacket(2, datalength);
+        readyToSend = 0;
+      }
+//      xSemaphoreGive( xSemaphore );
     }
     vTaskDelay(1);
   }
@@ -264,20 +279,37 @@ void sendIMUONECompassData(void *pvParameters) {
 
 void sendUltra1soundDist(void *pvParameters) {
   int datalength = 0;
+  int duration,distance;
   float currheading = 0;
   char tempCompass[6] = {0};
   while(1){
-    if (readyToSend == '1'){
-      datalength = DATA_OFFSET;
-      currheading = imu1.heading();
-      // setting up compass
-      dtostrf(currheading, 4, 2, tempCompass);
-      sprintf(packetSendArray+datalength,"%s", tempCompass);
-      datalength += 6;
-      frameAndSendPacket(2, datalength);
-      readyToSend = 0;
-    }
-    vTaskDelay(10);
+//    if( xSemaphoreTake( xSemaphore, ( TickType_t ) 10 ) == pdTRUE ){
+//       if (readyToSend == '1'){
+          datalength = DATA_OFFSET;
+          digitalWrite(Ultra1Trig, LOW);  // Added this line
+          vTaskDelay(2);
+          digitalWrite(Ultra1Trig, HIGH);
+          vTaskDelay(5);
+          digitalWrite(Ultra1Trig, LOW);
+          duration = pulseIn(Ultra1Echo, HIGH);
+          distance = (duration/2) / 29.1;
+          sprintf(packetSendArray+datalength,"%d", distance);
+          if (distance > 99){
+            datalength =  DATA_OFFSET + 3;
+          } else if (distance > 9) {
+            datalength = DATA_OFFSET + 2;
+          } else {
+            datalength = DATA_OFFSET + 1;
+          }
+//          Serial.println(distance);
+//          Serial.println(datalength);
+
+          frameAndSendPacket(3, datalength);
+          readyToSend = 0;
+//        }
+//        xSemaphoreGive( xSemaphore );
+//    }
+    vTaskDelay(50);
   }
 }
 
