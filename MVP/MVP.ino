@@ -103,31 +103,31 @@ void setup() {
 //    ,  NULL
 //    ,  5  // priority
 //    ,  NULL );
-//
-//   xTaskCreate(
-//    sendIMUONEAccData
-//    ,  (const portCHAR *)"sendIMUONEAccData"   // A name just for humans
-//    ,  128  // Stack size
-//    ,  NULL
-//    ,  4  // priority
-//    ,  NULL );
-//
-//   xTaskCreate(
-//    sendIMUONECompassData
-//    ,  (const portCHAR *)"sendIMUONECompassData"   // A name just for humans
-//    ,  128  // Stack size
-//    ,  NULL
-//    ,  3  // priority
-//    ,  NULL );
-//    
 
    xTaskCreate(
-    sendUltra1soundDist
-    ,  (const portCHAR *)"sendUltra1soundDist"   // A name just for humans
+    sendIMUONEAccData
+    ,  (const portCHAR *)"sendIMUONEAccData"   // A name just for humans
     ,  128  // Stack size
     ,  NULL
     ,  4  // priority
     ,  NULL );
+
+   xTaskCreate(
+    sendIMUONECompassData
+    ,  (const portCHAR *)"sendIMUONECompassData"   // A name just for humans
+    ,  128  // Stack size
+    ,  NULL
+    ,  3  // priority
+    ,  NULL );
+    
+
+//   xTaskCreate(
+//    sendUltra1soundDist
+//    ,  (const portCHAR *)"sendUltra1soundDist"   // A name just for humans
+//    ,  128  // Stack size
+//    ,  NULL
+//    ,  4  // priority
+//    ,  NULL );
     
 }
 
@@ -144,7 +144,7 @@ void serialRead(void *pvParameters)  // This is a task.
   for (;;){
     if (Serial3.available() > 0){
       incomingByte = Serial3.read();
-      Serial.print(incomingByte);
+//      Serial.print(incomingByte);
       switch(CurrMode) {            
          case READY :       // Syncing up to for packet opening
             if (incomingByte == ASCII_STARTFRAME){
@@ -161,7 +161,7 @@ void serialRead(void *pvParameters)  // This is a task.
                 CurrMode = TERMINATE;
                 break;
               case ASCII_ACK :
-//                Serial.println("Recieved ACK");
+                Serial.println("Recieved ACK");
                 packetType = ACK;
                 CurrMode = TERMINATE;
                 break;
