@@ -1,4 +1,5 @@
 #include <Arduino_FreeRTOS.h>
+#include <semphr.h>
 #include <Wire.h>
 #include <LSM303.h>
 
@@ -6,6 +7,9 @@ LSM303 imu1;
 
 // Constants
 #define PACKET_SIZE 64
+#define ULTRA_PING_DURATION 2
+#define ULTRA_RATIO 58.2
+#define ULTRA_THRESHOLD 50
 
 // ASCII used for Recieving
 #define ASCII_STARTFRAME 60
@@ -15,9 +19,15 @@ LSM303 imu1;
 #define ASCII_ACK 51
 #define DUMMY_CRC 49
 
+#define IMU_RATIO 5
+
 #define HANDSHAKE_SIZE 3
 #define DATA_OFFSET 4
 #define CRC_LENGTH 2
+
+#define Ultra1Trig 52
+#define Ultra1Echo 50
+#define Ultra1Vib  1
 
 // States used for Recieving
 enum RxState {READY, PACKET_TYPE, TERMINATE};
@@ -33,12 +43,14 @@ char handshake = '0';   // start sending data only after handshake
 char readyToSend = '0'; // to support stop and wait
 char packetSendArray[PACKET_SIZE] = {0};
 char crc[2] = {00};
+int  IMUONEaccCount = 0;
 
 // task declaration
 void serialRead(void *pvParameters);
 void IMUONEread(void *pvParameters);
 void sendIMUONEAccData(void *pvParameters);
 void sendIMUONECompassData(void *pvParameters);
+void sendUltra1soundDist(void *pvParameters);
 
 // function declaration
 void frameAndSendPacket(int fromComponentID, int dataToSend);
@@ -55,14 +67,13 @@ void setup() {
   // init(s) for sensors
   Wire.begin();
 
+  // INIT ULTRA1
+  pinMode(Ultra1Trig, OUTPUT);
+  pinMode(Ultra1Echo, INPUT);
+
   // INIT IMU1
   imu1.init();
   imu1.enableDefault();
-  /*
-  Calibration values; the default values of +/-32767 for each axis
-  lead to an assumed magnetometer bias of 0. Use the Calibrate example
-  program to determine appropriate values for your particular unit.
-  */
   imu1.m_min = (LSM303::vector<int16_t>){-32767, -32767, -32767};
   imu1.m_max = (LSM303::vector<int16_t>){+32767, +32767, +32767};
 
@@ -79,16 +90,16 @@ void setup() {
     ,  NULL );
 
    xTaskCreate(
-    IMUONEread
-    ,  (const portCHAR *)"IMUONEread"   // A name just for humans
+    sendIMUONEAccData
+    ,  (const portCHAR *)"sendIMUONEAccData"   // A name just for humans
     ,  128  // Stack size
     ,  NULL
-    ,  5  // priority
+    ,  4  // priority
     ,  NULL );
 
    xTaskCreate(
-    sendIMUONEAccData
-    ,  (const portCHAR *)"sendIMUONEAccData"   // A name just for humans
+    sendIMUONECompassData
+    ,  (const portCHAR *)"sendIMUONECompassData"   // A name just for humans
     ,  128  // Stack size
     ,  NULL
     ,  3  // priority
@@ -96,11 +107,20 @@ void setup() {
     
 
 //   xTaskCreate(
-//    sendIMUONECompassData
-//    ,  (const portCHAR *)"sendIMUONECompassData"   // A name just for humans
+//    sendUltra1soundDist
+//    ,  (const portCHAR *)"sendUltra1soundDist"   // A name just for humans
 //    ,  128  // Stack size
 //    ,  NULL
 //    ,  4  // priority
+//    ,  NULL );
+
+
+//   xTaskCreate(
+//    IMUONEread
+//    ,  (const portCHAR *)"IMUONEread"   // A name just for humans
+//    ,  128  // Stack size
+//    ,  NULL
+//    ,  5  // priority
 //    ,  NULL );
     
 }
@@ -118,19 +138,19 @@ void serialRead(void *pvParameters)  // This is a task.
   for (;;){
     if (Serial3.available() > 0){
       incomingByte = Serial3.read();
-      Serial.print(incomingByte);
+//      Serial.print(incomingByte);
       switch(CurrMode) {            
          case READY :       // Syncing up to for packet opening
             if (incomingByte == ASCII_STARTFRAME){
               CurrMode = PACKET_TYPE;
               packetType = UNDETERMINED; 
-              Serial.println("Recieved Start");
+//              Serial.println("Recieved Start");
             }
             break;
          case PACKET_TYPE : // Determind what kind of packet is being recieved
            switch(incomingByte){
               case ASCII_HELLO :
-                Serial.println("Recieved HELLO");
+//                Serial.println("Recieved HELLO");
                 packetType = HELLO;
                 CurrMode = TERMINATE;
                 break;
@@ -151,14 +171,14 @@ void serialRead(void *pvParameters)  // This is a task.
             if (packetType == HELLO){
               handshake = '1';
               readyToSend = '1';
-              Serial.println("Handshake completed");
+//              Serial.println("Handshake completed");
             }
             if (packetType == ACK){
               readyToSend = '1';
             }
           } else {
             CurrMode = READY;
-            Serial.println("CORRUPT, resetting to READY");
+//            Serial.println("CORRUPT, resetting to READY");
           }       
       }
     }
@@ -168,12 +188,12 @@ void serialRead(void *pvParameters)  // This is a task.
 
 //send IMU task
 
-void IMUONEread(void *pvParameters) {
-  while (1){
-    imu1.read();
-    vTaskDelay(1);
-  }
-}
+//void IMUONEread(void *pvParameters) {
+//  while (1){
+////    imu1.read();
+//    vTaskDelay(1);
+//  }
+//}
 
 
 void sendIMUONEAccData(void *pvParameters) {
@@ -186,33 +206,35 @@ void sendIMUONEAccData(void *pvParameters) {
   double z = 0;
   while(1){
     if (readyToSend == '1'){
-      datalength = DATA_OFFSET;
-      x = (imu1.a.x / 1600.0);
-      y = (imu1.a.y / 1600.0);
-      z = (imu1.a.z / 1600.0);
-  
-      // setting up x
-      dtostrf(x, 4, 2, tempX);
-      sprintf(packetSendArray+datalength,"%s", tempX);
-      datalength += 6;
-      packetSendArray[++datalength] = ',';
-      ++datalength;
-  
-      // setting up y
-      dtostrf(y, 4, 2, tempY);
-      sprintf(packetSendArray+datalength,"%s", tempY);
-      datalength += 6;
-      packetSendArray[++datalength] = ',';
-      ++datalength;
-  
-      // setting up z
-      dtostrf(z, 4, 2, tempZ);
-      sprintf(packetSendArray+datalength,"%s", tempZ);
-      datalength += 6;
-       
-      frameAndSendPacket(1, datalength);
+        imu1.read();
+        datalength = DATA_OFFSET;
+        x = (imu1.a.x / 1600.0);
+        y = (imu1.a.y / 1600.0);
+        z = (imu1.a.z / 1600.0);
+    
+        // setting up x
+        dtostrf(x, 4, 2, tempX);
+        sprintf(packetSendArray+datalength,"%s", tempX);
+        datalength += 6;
+        packetSendArray[++datalength] = ',';
+        ++datalength;
+    
+        // setting up y
+        dtostrf(y, 4, 2, tempY);
+        sprintf(packetSendArray+datalength,"%s", tempY);
+        datalength += 6;
+        packetSendArray[++datalength] = ',';
+        ++datalength;
+    
+        // setting up z
+        dtostrf(z, 4, 2, tempZ);
+        sprintf(packetSendArray+datalength,"%s", tempZ);
+        datalength += 6;
+         
+        frameAndSendPacket(1, datalength);
+//        readyToSend = 0;
     }
-    vTaskDelay(2);
+    vTaskDelay(1);
   }
 }
 
@@ -222,15 +244,53 @@ void sendIMUONECompassData(void *pvParameters) {
   char tempCompass[6] = {0};
   while(1){
     if (readyToSend == '1'){
-      datalength = DATA_OFFSET;
-      currheading = imu1.heading();
-      // setting up compass
-      dtostrf(currheading, 4, 2, tempCompass);
-      sprintf(packetSendArray+datalength,"%s", tempCompass);
-      datalength += 6;
-      frameAndSendPacket(2, datalength);
+        datalength = DATA_OFFSET;
+//        imu1.read();  // acc will be reading at higher much higher frequency no need to re-read here
+        currheading = imu1.heading();
+        // setting up compass
+        dtostrf(currheading, 4, 2, tempCompass);
+        sprintf(packetSendArray+datalength,"%s", tempCompass);
+        datalength += 6;
+        frameAndSendPacket(2, datalength);
+//        readyToSend = 0;
+      }
+    vTaskDelay(1);
+  }
+}
+
+void sendUltra1soundDist(void *pvParameters) {
+  int datalength = 0;
+  int duration,distance;
+  float currheading = 0;
+  char tempCompass[6] = {0};
+  while(1){
+       if (readyToSend == '1'){
+          datalength = DATA_OFFSET;
+          digitalWrite(Ultra1Trig, LOW); 
+          vTaskDelay(ULTRA_PING_DURATION);
+          digitalWrite(Ultra1Trig, HIGH);
+          vTaskDelay(ULTRA_PING_DURATION);
+          digitalWrite(Ultra1Trig, LOW);
+          duration = pulseIn(Ultra1Echo, HIGH);
+          distance = duration / ULTRA_RATIO;
+          // Obstacle detected
+          if (distance <= ULTRA_THRESHOLD){
+//          Serial.println(distance);
+            sprintf(packetSendArray+datalength,"%d", distance);
+            if (distance > 99){
+              datalength =  DATA_OFFSET + 3;
+            } else if (distance > 9) {
+              datalength = DATA_OFFSET + 2;
+            } else {
+              datalength = DATA_OFFSET + 1;
+            }
+            frameAndSendPacket(3, datalength);
+            analogWrite(Ultra1Vib,255-(datalength*255/ULTRA_THRESHOLD));
+          } else {
+            analogWrite(Ultra1Vib,0);
+          }
     }
-    vTaskDelay(10);
+    vTaskDelay(50);
   }
 }
 
