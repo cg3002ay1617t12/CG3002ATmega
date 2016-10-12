@@ -25,6 +25,7 @@ LSM303 imu1;
 #define DATA_OFFSET 4
 #define CRC_LENGTH 2
 
+// Ultrasound 1
 #define Ultra1Trig 52
 #define Ultra1Echo 50
 #define Ultra1Vib  1
@@ -247,7 +248,6 @@ void sendIMUONECompassData(void *pvParameters) {
         datalength = DATA_OFFSET;
 //        imu1.read();  // acc will be reading at higher much higher frequency no need to re-read here
         currheading = imu1.heading();
-        // setting up compass
         dtostrf(currheading, 4, 2, tempCompass);
         sprintf(packetSendArray+datalength,"%s", tempCompass);
         datalength += 6;
@@ -285,7 +285,7 @@ void sendUltra1soundDist(void *pvParameters) {
               datalength = DATA_OFFSET + 1;
             }
             frameAndSendPacket(3, datalength);
-            analogWrite(Ultra1Vib,255-(datalength*255/ULTRA_THRESHOLD));
+            analogWrite(Ultra1Vib,255-(distance*255/ULTRA_THRESHOLD));
           } else {
             analogWrite(Ultra1Vib,0);
           }
