@@ -6,11 +6,6 @@
 LSM303 imu1;
 L3G gyro1;
 
-// Offsets to correct gyro zero bias
-float x_offset = 0.67;
-float y_offset = 2.04;
-float z_offset = -0.11;
-
 // Constants
 #define PACKET_SIZE 64
 
@@ -46,16 +41,18 @@ void serialRead(void *pvParameters);
 void IMUONEread(void *pvParameters);
 void sendIMUONEAccData(void *pvParameters);
 void sendIMUONECompassData(void *pvParameters);
+void sendIMUONEGyroData(void *pvParameters);
 
 // function declaration
+int processFloat(double val, char *result, int datalength, bool addComma);
 void frameAndSendPacket(int fromComponentID, int dataToSend);
 void sendHello();
 void generateCRC(int frameSize);
 
 void setup() {
   // setup serial ports
-  Serial3.begin(115200);
-  while (!Serial3); // to ensure that Serial 3 is setup
+//  Serial3.begin(115200);
+//  while (!Serial3); // to ensure that Serial 3 is setup
   Serial.begin(115200);
   while (!Serial);  // to ensure that Serial is setup
 
@@ -63,7 +60,7 @@ void setup() {
   Wire.begin();
   if (!gyro1.init())
   {
-    Serial.println("Failed to autodetect gyro type!");
+//    Serial.println("Failed to autodetect gyro type!");
     while (1);
   }
   gyro1.enableDefault();
@@ -80,7 +77,7 @@ void setup() {
 
   sendHello();
 
-  Serial.println("Initialized Mega");
+//  Serial.println("Initialized Mega");
 
   xTaskCreate(
     serialRead
@@ -136,49 +133,49 @@ void loop() {
 void serialRead(void *pvParameters)  // This is a task.
 { 
   for (;;){
-    if (Serial3.available() > 0){
-      incomingByte = Serial3.read();
-      Serial.print(incomingByte);
+    if (Serial.available() > 0){
+      incomingByte = Serial.read();
+//      Serial.print(incomingByte);
       switch(CurrMode) {            
          case READY :       // Syncing up to for packet opening
             if (incomingByte == ASCII_STARTFRAME){
               CurrMode = PACKET_TYPE;
               packetType = UNDETERMINED; 
-              Serial.println("Recieved Start");
+//              Serial.println("Recieved Start");
             }
             break;
          case PACKET_TYPE : // Determind what kind of packet is being recieved
            switch(incomingByte){
               case ASCII_HELLO :
-                Serial.println("Recieved HELLO");
+//                Serial.println("Recieved HELLO");
                 packetType = HELLO;
                 CurrMode = TERMINATE;
                 break;
               case ASCII_ACK :
-                Serial.println("Recieved ACK");
+//                Serial.println("Recieved ACK");
                 packetType = ACK;
                 CurrMode = TERMINATE;
                 break;
               default :
                 CurrMode = READY;
-                Serial.println("CORRUPT, resetting to READY");
+//                Serial.println("CORRUPT, resetting to READY");
            }
           break;
         case TERMINATE:
-          Serial.println("terminate");
+//          Serial.println("terminate");
           if (incomingByte == ASCII_ENDFRAME){
             CurrMode = READY;
             if (packetType == HELLO){
               handshake = '1';
               readyToSend = '1';
-              Serial.println("Handshake completed");
+//              Serial.println("Handshake completed");
             }
             if (packetType == ACK){
               readyToSend = '1';
             }
           } else {
             CurrMode = READY;
-            Serial.println("CORRUPT, resetting to READY");
+//            Serial.println("CORRUPT, resetting to READY");
           }       
       }
     }
@@ -262,6 +259,10 @@ void sendIMUONEGyroData(void *pvParameters) {
   double x = 0;
   double y = 0;
   double z = 0;
+  // Offsets to correct gyro zero bias
+  float x_offset = 0.67;
+  float y_offset = 2.04;
+  float z_offset = -0.11;
   while(1){
     if (readyToSend == '1'){
       datalength = DATA_OFFSET;
@@ -270,23 +271,13 @@ void sendIMUONEGyroData(void *pvParameters) {
       z = (gyro1.g.z * 8.75/1000 + z_offset);
   
       // setting up x
-      dtostrf(x, 4, 2, tempX);
-      sprintf(packetSendArray+datalength,"%s", tempX);
-      datalength += 6;
-      packetSendArray[++datalength] = ',';
-      ++datalength;
+      datalength = processFloat(x, tempX, datalength, true);
   
       // setting up y
-      dtostrf(y, 4, 2, tempY);
-      sprintf(packetSendArray+datalength,"%s", tempY);
-      datalength += 6;
-      packetSendArray[++datalength] = ',';
-      ++datalength;
+      datalength = processFloat(y, tempY, datalength, true);
   
       // setting up z
-      dtostrf(z, 4, 2, tempZ);
-      sprintf(packetSendArray+datalength,"%s", tempZ);
-      datalength += 6;
+      datalength = processFloat(z, tempZ, datalength, false);
        
       frameAndSendPacket(3, datalength);
     }
@@ -294,6 +285,16 @@ void sendIMUONEGyroData(void *pvParameters) {
   }
 }
 
+int processFloat(double val, char *result, int datalength, bool addComma) {
+  // setting up z
+  dtostrf(val, 4, 2, result);
+  sprintf(packetSendArray+datalength,"%s", result);
+  if (addComma) {
+    packetSendArray[++datalength] = ',';
+  }
+  datalength += 6;
+  return datalength;
+}
 
 /*--------------------------------------------------*/
 /*------------------- Functions --------------------*/
@@ -303,8 +304,8 @@ void sendHello(){
   packetSendArray[0] = ASCII_STARTFRAME;
   packetSendArray[1] = ASCII_HELLO;
   packetSendArray[2] = ASCII_ENDFRAME;
-  Serial3.write(packetSendArray,HANDSHAKE_SIZE);
-  Serial3.flush();
+  Serial.write(packetSendArray,HANDSHAKE_SIZE);
+  Serial.flush();
 }
 
 void frameAndSendPacket(int fromComponentID, int dataLength){
@@ -314,8 +315,8 @@ void frameAndSendPacket(int fromComponentID, int dataLength){
   packetSendArray[3] = dataLength;
   generateCRC(DATA_OFFSET+dataLength);
   packetSendArray[DATA_OFFSET+dataLength+CRC_LENGTH] = ASCII_ENDFRAME;
-  Serial3.write(packetSendArray,DATA_OFFSET+dataLength+CRC_LENGTH+1);
-  Serial3.flush();
+  Serial.write(packetSendArray,DATA_OFFSET+dataLength+CRC_LENGTH+1);
+  Serial.flush();
 }
 
 void generateCRC(int CRCStart){
