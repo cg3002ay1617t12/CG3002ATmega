@@ -2,8 +2,10 @@
 #include <semphr.h>
 #include <Wire.h>
 #include <LSM303.h>
+#include <L3G.h>
 
 LSM303 imu1;
+L3G gyro1;
 
 // Constants
 #define PACKET_SIZE 64
@@ -41,16 +43,16 @@ int incomingByte = 0;
 
 // Variables for sending data
 char handshake = '0';   // start sending data only after handshake
-char readyToSend = '0'; // to support stop and wait
+char readyToSend = '1'; // to support stop and wait
 char packetSendArray[PACKET_SIZE] = {0};
 char crc[2] = {00};
-int  IMUONEaccCount = 0;
 
 // task declaration
 void serialRead(void *pvParameters);
 void IMUONEread(void *pvParameters);
 void sendIMUONEAccData(void *pvParameters);
 void sendIMUONECompassData(void *pvParameters);
+void sendIMUONEGyroData(void *pvParameters);
 void sendUltra1soundDist(void *pvParameters);
 
 // function declaration
@@ -58,16 +60,32 @@ void frameAndSendPacket(int fromComponentID, int dataToSend);
 void sendHello();
 void generateCRC(int frameSize);
 
+// Synchronization primitives
+SemaphoreHandle_t xSemaphore = NULL;
+
+int IMUONEAccCount = 0;
+int IMUONECompassCount = 0;
+int IMUONEGyroCount = 0;
+
 void setup() {
+  xSemaphore = xSemaphoreCreateMutex();
+  xSemaphoreGive(xSemaphore);
   // setup serial ports
-  Serial3.begin(115200);
-  while (!Serial3); // to ensure that Serial 3 is setup
+//  Serial3.begin(115200);
+//  while (!Serial3); // to ensure that Serial 3 is setup
   Serial.begin(115200);
   while (!Serial);  // to ensure that Serial is setup
 
   // init(s) for sensors
+  // INIT GYRO1
   Wire.begin();
-
+  if (!gyro1.init())
+  {
+    Serial.println("Failed to autodetect gyro type!");
+    while (1);
+  }
+  gyro1.enableDefault();
+  
   // INIT ULTRA1
   pinMode(Ultra1Trig, OUTPUT);
   pinMode(Ultra1Echo, INPUT);
@@ -78,17 +96,17 @@ void setup() {
   imu1.m_min = (LSM303::vector<int16_t>){-32767, -32767, -32767};
   imu1.m_max = (LSM303::vector<int16_t>){+32767, +32767, +32767};
 
-  sendHello();
+ sendHello();
 
-  Serial.println("Initialized Mega");
+  // Serial.println("Initialized Mega");
 
-  xTaskCreate(
-    serialRead
-    ,  (const portCHAR *)"serialRead"   // A name just for humans
-    ,  128  // Stack size
-    ,  NULL
-    ,  10  // priority
-    ,  NULL );
+//  xTaskCreate(
+//    serialRead
+//    ,  (const portCHAR *)"serialRead"   // A name just for humans
+//    ,  128  // Stack size
+//    ,  NULL
+//    ,  10  // priority
+//    ,  NULL );
 
    xTaskCreate(
     sendIMUONEAccData
@@ -105,7 +123,14 @@ void setup() {
     ,  NULL
     ,  3  // priority
     ,  NULL );
-    
+
+  xTaskCreate(
+   sendIMUONEGyroData
+   ,  (const portCHAR *)"sendIMUONEGyroData"   // A name just for humans
+   ,  128  // Stack size
+   ,  NULL
+   ,  4  // priority
+   ,  NULL );
 
 //   xTaskCreate(
 //    sendUltra1soundDist
@@ -137,8 +162,8 @@ void loop() {
 void serialRead(void *pvParameters)  // This is a task.
 { 
   for (;;){
-    if (Serial3.available() > 0){
-      incomingByte = Serial3.read();
+    if (Serial.available() > 0){
+      incomingByte = Serial.read();
 //      Serial.print(incomingByte);
       switch(CurrMode) {            
          case READY :       // Syncing up to for packet opening
@@ -156,17 +181,17 @@ void serialRead(void *pvParameters)  // This is a task.
                 CurrMode = TERMINATE;
                 break;
               case ASCII_ACK :
-                Serial.println("Recieved ACK");
+//                Serial.println("Recieved ACK");
                 packetType = ACK;
                 CurrMode = TERMINATE;
                 break;
               default :
                 CurrMode = READY;
-                Serial.println("CORRUPT, resetting to READY");
+//                Serial.println("CORRUPT, resetting to READY");
            }
           break;
         case TERMINATE:
-          Serial.println("terminate");
+//          Serial.println("terminate");
           if (incomingByte == ASCII_ENDFRAME){
             CurrMode = READY;
             if (packetType == HELLO){
@@ -196,7 +221,6 @@ void serialRead(void *pvParameters)  // This is a task.
 //  }
 //}
 
-
 void sendIMUONEAccData(void *pvParameters) {
   int datalength = 0;
   char tempX[6] = {0};
@@ -207,54 +231,158 @@ void sendIMUONEAccData(void *pvParameters) {
   double z = 0;
   while(1){
     if (readyToSend == '1'){
-        imu1.read();
-        datalength = DATA_OFFSET;
-        x = (imu1.a.x / 1600.0);
-        y = (imu1.a.y / 1600.0);
-        z = (imu1.a.z / 1600.0);
-    
-        // setting up x
-        dtostrf(x, 4, 2, tempX);
-        sprintf(packetSendArray+datalength,"%s", tempX);
-        datalength += 6;
-        packetSendArray[++datalength] = ',';
-        ++datalength;
-    
-        // setting up y
-        dtostrf(y, 4, 2, tempY);
-        sprintf(packetSendArray+datalength,"%s", tempY);
-        datalength += 6;
-        packetSendArray[++datalength] = ',';
-        ++datalength;
-    
-        // setting up z
-        dtostrf(z, 4, 2, tempZ);
-        sprintf(packetSendArray+datalength,"%s", tempZ);
-        datalength += 6;
-         
-        frameAndSendPacket(1, datalength);
-//        readyToSend = 0;
+      if( xSemaphore != NULL ) {
+        /* See if we can obtain the semaphore.  If the semaphore is not
+        available wait 10 ticks to see if it becomes free. */
+        if(xSemaphoreTake(xSemaphore, (TickType_t) 10) == pdTRUE) {
+          /* We were able to obtain the semaphore and can now access the
+          shared resource. */
+          // Serial.println("Semaphore taken!");
+          imu1.read();
+          datalength = DATA_OFFSET;
+          x = (imu1.a.x / 1600.0);
+          y = (imu1.a.y / 1600.0);
+          z = (imu1.a.z / 1600.0);
+      
+          // setting up x
+          dtostrf(x, 4, 2, tempX);
+          sprintf(packetSendArray+datalength,"%s", tempX);
+          datalength += 6;
+          packetSendArray[++datalength] = ',';
+          ++datalength;
+      
+          // setting up y
+          dtostrf(y, 4, 2, tempY);
+          sprintf(packetSendArray+datalength,"%s", tempY);
+          datalength += 6;
+          packetSendArray[++datalength] = ',';
+          ++datalength;
+      
+          // setting up z
+          dtostrf(z, 4, 2, tempZ);
+          sprintf(packetSendArray+datalength,"%s", tempZ);
+          datalength += 6;
+           
+          frameAndSendPacket(1, datalength);
+          // readyToSend = 0;
+
+          /* We have finished accessing the shared resource.  Release the
+          semaphore. */
+          IMUONEAccCount++;
+          xSemaphoreGive(xSemaphore);
+          // Serial.print("Acc     : ");
+          // Serial.println(IMUONEAccCount);
+        } else {
+            /* We could not obtain the semaphore and can therefore not access
+            the shared resource safely. */
+            // Serial.println("Waiting...");
+        }
+      }
     }
-    vTaskDelay(1);
+    vTaskDelay(10);
   }
 }
 
 void sendIMUONECompassData(void *pvParameters) {
   int datalength = 0;
   float currheading = 0;
-  char tempCompass[6] = {0};
+  char tempCompass[7] = {0};
+  while(1){
+    if (readyToSend == '1') {
+      if(xSemaphore != NULL) {
+        /* See if we can obtain the semaphore.  If the semaphore is not
+        available wait 10 ticks to see if it becomes free. */
+        if( xSemaphoreTake(xSemaphore, (TickType_t) 10) == pdTRUE ) {
+            /* We were able to obtain the semaphore and can now access the
+            shared resource. */
+            // Serial.println("Semaphore taken!");
+            datalength = DATA_OFFSET;
+            imu1.read();  // acc will be reading at higher much higher frequency no need to re-read here
+            currheading = imu1.heading();
+            dtostrf(currheading, 6, 2, tempCompass);
+            sprintf(packetSendArray+datalength, "%s", tempCompass);
+            datalength += 7;
+            frameAndSendPacket(2, datalength);
+            /* We have finished accessing the shared resource.  Release the
+            semaphore. */
+            IMUONECompassCount++;
+            xSemaphoreGive(xSemaphore);
+            // Serial.print("Compass : ");
+            // Serial.println(IMUONECompassCount);
+        } else {
+            /* We could not obtain the semaphore and can therefore not access
+            the shared resource safely. */
+            // Serial.println("Waiting...");
+        }
+      }
+    // readyToSend = 0;
+    }
+    vTaskDelay(20);
+  }
+}
+
+void sendIMUONEGyroData(void *pvParameters) {
+  int datalength = 0;
+  char tempX[6] = {0};
+  char tempY[6] = {0};
+  char tempZ[6] = {0};
+  float g_x = 0;
+  float g_y = 0;
+  float g_z = 0;
+  float x_offset = 0.67;
+  float y_offset = 2.04;
+  float z_offset = -0.11;
   while(1){
     if (readyToSend == '1'){
-        datalength = DATA_OFFSET;
-//        imu1.read();  // acc will be reading at higher much higher frequency no need to re-read here
-        currheading = imu1.heading();
-        dtostrf(currheading, 4, 2, tempCompass);
-        sprintf(packetSendArray+datalength,"%s", tempCompass);
-        datalength += 6;
-        frameAndSendPacket(2, datalength);
-//        readyToSend = 0;
+      if(xSemaphore != NULL) {
+        /* See if we can obtain the semaphore.  If the semaphore is not
+        available wait 10 ticks to see if it becomes free. */
+        if( xSemaphoreTake(xSemaphore, (TickType_t) 10) == pdTRUE ) {
+          /* We were able to obtain the semaphore and can now access the
+          shared resource. */
+          // Serial.println("Semaphore taken!");
+          gyro1.read();
+          datalength = DATA_OFFSET;
+          g_x = gyro1.g.x * 8.75/1000 + x_offset;
+          g_y = gyro1.g.y * 8.75/1000 + y_offset;
+          g_z = gyro1.g.z * 8.75/1000 + z_offset;
+      
+          // setting up x
+          dtostrf(g_x, 4, 2, tempX);
+          sprintf(packetSendArray+datalength,"%s", tempX);
+          datalength += 6;
+          packetSendArray[datalength] = ',';
+          ++datalength;
+      
+          // setting up y
+          dtostrf(g_y, 4, 2, tempY);
+          sprintf(packetSendArray+datalength,"%s", tempY);
+          datalength += 6;
+          packetSendArray[datalength] = ',';
+          ++datalength;
+      
+          // setting up z
+          dtostrf(g_z, 4, 2, tempZ);
+          sprintf(packetSendArray+datalength,"%s", tempZ);
+          datalength += 6;
+           
+          frameAndSendPacket(3, datalength);
+          // readyToSend = 0;
+           
+          /* We have finished accessing the shared resource.  Release the
+          semaphore. */
+          IMUONEGyroCount++;
+          xSemaphoreGive(xSemaphore);
+          // Serial.print("Gyro     : ");
+          // Serial.println(IMUONEGyroCount);
+        } else {
+          /* We could not obtain the semaphore and can therefore not access
+          the shared resource safely. */
+          // Serial.println("Waiting...");
+        }
       }
-    vTaskDelay(1);
+    }
+    vTaskDelay(15);
   }
 }
 
@@ -284,7 +412,7 @@ void sendUltra1soundDist(void *pvParameters) {
             } else {
               datalength = DATA_OFFSET + 1;
             }
-            frameAndSendPacket(3, datalength);
+            frameAndSendPacket(4, datalength);
             analogWrite(Ultra1Vib,255-(distance*255/ULTRA_THRESHOLD));
           } else {
             analogWrite(Ultra1Vib,0);
@@ -302,19 +430,20 @@ void sendHello(){
   packetSendArray[0] = ASCII_STARTFRAME;
   packetSendArray[1] = ASCII_HELLO;
   packetSendArray[2] = ASCII_ENDFRAME;
-  Serial3.write(packetSendArray,HANDSHAKE_SIZE);
-  Serial3.flush();
+  Serial.write(packetSendArray,HANDSHAKE_SIZE);
+  Serial.flush();
 }
 
 void frameAndSendPacket(int fromComponentID, int dataLength){
   packetSendArray[0] = ASCII_STARTFRAME;
   packetSendArray[1] = ASCII_DATA;
-  packetSendArray[2] = fromComponentID;
-  packetSendArray[3] = dataLength;
-  generateCRC(DATA_OFFSET+dataLength);
-  packetSendArray[DATA_OFFSET+dataLength+CRC_LENGTH] = ASCII_ENDFRAME;
-  Serial3.write(packetSendArray,DATA_OFFSET+dataLength+CRC_LENGTH+1);
-  Serial3.flush();
+  packetSendArray[2] = 49;  // Convert int to ASCII Char first before assigning
+  packetSendArray[3] = 54;  // BEWARE!!! datalength can be > 1 digit, how can u assign to 1 char???
+  generateCRC(dataLength);
+  packetSendArray[dataLength+CRC_LENGTH] = ASCII_ENDFRAME;
+  Serial.write(packetSendArray,dataLength+CRC_LENGTH+1); // DATALENGTH has already taken DATA_OFFSET into account, why do you need to + DATA_OFFSET here?
+  Serial.flush();
+  // Serial.println();
 }
 
 void generateCRC(int CRCStart){
