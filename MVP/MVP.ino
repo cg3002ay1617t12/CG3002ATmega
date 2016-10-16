@@ -406,10 +406,10 @@ void frameAndSendPacket(int fromComponentID, int dataLength){
   packetSendArray[0] = ASCII_STARTFRAME;
   packetSendArray[1] = ASCII_DATA;
   packetSendArray[2] = fromComponentID;
-  packetSendArray[3] = dataLength - DATA_OFFSET;
+  packetSendArray[3] = dataLength - DATA_OFFSET; // Need to account for the extra DATA_OFFSET here
   generateCRC(dataLength);
   packetSendArray[dataLength+CRC_LENGTH] = ASCII_ENDFRAME;
-  SERIAL.write(packetSendArray,dataLength+CRC_LENGTH+1); // DATALENGTH has already taken DATA_OFFSET into account, why do you need to + DATA_OFFSET here?
+  SERIAL.write(packetSendArray,dataLength+CRC_LENGTH+1);
   SERIAL.flush();
 }
 
