@@ -286,8 +286,8 @@ void sendIMUONECompassData(void *pvParameters) {
   char tempCompass[7] = {0};
   while(1){
     if (readyToSend == '1') {
-      if(xSemaphore != NULL) {
-        if( xSemaphoreTake(xSemaphore, (TickType_t) 10) == pdTRUE ) {
+//      if(xSemaphore != NULL) {
+//        if( xSemaphoreTake(xSemaphore, (TickType_t) 10) == pdTRUE ) {
             datalength = DATA_OFFSET;
             imu1.read();  // acc will be reading at higher much higher frequency no need to re-read here
             currheading = imu1.heading((LSM303::vector<int>){0, 0, 1});
@@ -296,7 +296,7 @@ void sendIMUONECompassData(void *pvParameters) {
             datalength += strlen(tempCompass);
             frameAndSendPacket(2, datalength);
             
-            xSemaphoreGive(xSemaphore);
+//            xSemaphoreGive(xSemaphore);
         } else {
             // Serial.println("Waiting...");
         }
@@ -418,15 +418,15 @@ void frameAndSendPacket(int fromComponentID, int dataLength){
   packetSendArray[dataLength+CRC_LENGTH] = ASCII_ENDFRAME;
   SERIAL.write(packetSendArray,dataLength+CRC_LENGTH+1); // DATALENGTH has already taken DATA_OFFSET into account, why do you need to + DATA_OFFSET here?
   SERIAL.flush();
-  Serial.write(packetSendArray,dataLength+CRC_LENGTH+1); 
-  Serial.println();
+//  Serial.write(packetSendArray,dataLength+CRC_LENGTH+1); 
+//  Serial.println();
   
-//
-//  if (fromComponentID == 2){
-//     Serial.write(packetSendArray, dataLength+CRC_LENGTH+1);
-//     Serial.println();
-//  }
-// 
+
+  if (fromComponentID == 2){
+     Serial.write(packetSendArray, dataLength+CRC_LENGTH+1);
+     Serial.println();
+  }
+ 
 }
 
 void generateCRC(int CRCStart){
