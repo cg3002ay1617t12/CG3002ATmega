@@ -7,18 +7,19 @@
 LSM303 imu1;
 L3G gyro1;
 
+
 #ifdef ARDUINO_AVR_MEGA2560
   // Serial 3: 15 (RX) 14 (TX);
   #define SERIAL Serial3
 #elif ARDUINO_AVR_UNO
-  #define SERIAL Serial
+  #define SERIAL Serial3
 #endif
 
 // Constants
 #define PACKET_SIZE 64
 #define ULTRA_PING_DURATION 2
 #define ULTRA_RATIO 58.2
-#define ULTRA_THRESHOLD 50
+#define ULTRA_THRESHOLD 60
 
 // ASCII used for Recieving
 #define ASCII_STARTFRAME 60
@@ -35,9 +36,11 @@ L3G gyro1;
 #define CRC_LENGTH 2
 
 // Ultrasound 1
-#define Ultra1Trig 52
-#define Ultra1Echo 50
-#define Ultra1Vib  1
+#define Ultra1Trig 8
+#define Ultra1Echo 7
+#define Ultra1Vib  5
+
+#define VibrationMotor
 
 // States used for Recieving
 enum RxState {READY, PACKET_TYPE, TERMINATE};
@@ -50,7 +53,7 @@ int incomingByte = 0;
 
 // Variables for sending data
 char handshake = '0';   // start sending data only after handshake
-char readyToSend = '0'; // to support stop and wait
+char readyToSend = '1'; // to support stop and wait
 char packetSendArray[PACKET_SIZE] = {0};
 char crc[2] = {00};
 
@@ -96,6 +99,7 @@ void setup() {
   // INIT ULTRA1
   pinMode(Ultra1Trig, OUTPUT);
   pinMode(Ultra1Echo, INPUT);
+  pinMode(Ultra1Vib, OUTPUT);
 
   // INIT IMU1
   imu1.init();
@@ -107,13 +111,13 @@ void setup() {
 
   Serial.println("Initialized Mega");
 
-//  xTaskCreate(
-//    serialRead
-//    ,  (const portCHAR *)"serialRead"   // A name just for humans
-//    ,  128  // Stack size
-//    ,  NULL
-//    ,  10  // priority
-//    ,  NULL );
+  xTaskCreate(
+    serialRead
+    ,  (const portCHAR *)"serialRead"   // A name just for humans
+    ,  128  // Stack size
+    ,  NULL
+    ,  10  // priority
+    ,  NULL );
 
    xTaskCreate(
     sendIMUONEAccData
@@ -128,7 +132,7 @@ void setup() {
     ,  (const portCHAR *)"sendIMUONECompassData"   // A name just for humans
     ,  128  // Stack size
     ,  NULL
-    ,  3  // priority
+    ,  12  // priority
     ,  NULL );
 
   xTaskCreate(
@@ -139,13 +143,13 @@ void setup() {
    ,  4  // priority
    ,  NULL );
 
-//   xTaskCreate(
-//    sendUltra1soundDist
-//    ,  (const portCHAR *)"sendUltra1soundDist"   // A name just for humans
-//    ,  128  // Stack size
-//    ,  NULL
-//    ,  4  // priority
-//    ,  NULL );
+   xTaskCreate(
+    sendUltra1soundDist
+    ,  (const portCHAR *)"sendUltra1soundDist"   // A name just for humans
+    ,  128  // Stack size
+    ,  NULL
+    ,  4  // priority
+    ,  NULL );
 
 
 //   xTaskCreate(
@@ -286,7 +290,7 @@ void sendIMUONECompassData(void *pvParameters) {
         if( xSemaphoreTake(xSemaphore, (TickType_t) 10) == pdTRUE ) {
             datalength = DATA_OFFSET;
             imu1.read();  // acc will be reading at higher much higher frequency no need to re-read here
-            currheading = imu1.heading();
+            currheading = imu1.heading((LSM303::vector<int>){0, 0, 1});
             dtostrf(currheading, 6, 2, tempCompass);
             sprintf(packetSendArray+datalength, "%s", tempCompass);
             datalength += strlen(tempCompass);
@@ -370,23 +374,26 @@ void sendUltra1soundDist(void *pvParameters) {
           duration = pulseIn(Ultra1Echo, HIGH);
           distance = duration / ULTRA_RATIO;
           // Obstacle detected
-          if (distance <= ULTRA_THRESHOLD){
-//          Serial.println(distance);
-            sprintf(packetSendArray+datalength,"%d", distance);
-            if (distance > 99){
-              datalength =  DATA_OFFSET + 3;
-            } else if (distance > 9) {
-              datalength = DATA_OFFSET + 2;
-            } else {
-              datalength = DATA_OFFSET + 1;
-            }
-            frameAndSendPacket(4, datalength);
-            analogWrite(Ultra1Vib,255-(distance*255/ULTRA_THRESHOLD));
+          if (distance <= ULTRA_THRESHOLD and distance > 7){
+            Serial.print("Distance: ");
+            Serial.println(distance);
+            digitalWrite(Ultra1Vib, 1);
+//            analogWrite(Ultra1Vib,(int)(255-(distance*255.0/ULTRA_THRESHOLD)));
+//            sprintf(packetSendArray+datalength,"%d", distance);
+//            if (distance > 99){
+//              datalength = DATA_OFFSET + 3;
+//            } else if (distance > 9) {
+//              datalength = DATA_OFFSET + 2;
+//            } else {
+//              datalength = DATA_OFFSET + 1;
+//            }
+//            frameAndSendPacket(4, datalength);
+//            digitWrite(Ultra1Vib, HIGH)
           } else {
-            analogWrite(Ultra1Vib,0);
+            digitalWrite(Ultra1Vib,0);
           }
     }
-    vTaskDelay(50);
+    vTaskDelay(5);
   }
 }
 
@@ -406,11 +413,20 @@ void frameAndSendPacket(int fromComponentID, int dataLength){
   packetSendArray[0] = ASCII_STARTFRAME;
   packetSendArray[1] = ASCII_DATA;
   packetSendArray[2] = fromComponentID;
-  packetSendArray[3] = dataLength - DATA_OFFSET; // Need to account for the extra DATA_OFFSET here
+  packetSendArray[3] = dataLength - DATA_OFFSET;
   generateCRC(dataLength);
   packetSendArray[dataLength+CRC_LENGTH] = ASCII_ENDFRAME;
-  SERIAL.write(packetSendArray,dataLength+CRC_LENGTH+1);
+  SERIAL.write(packetSendArray,dataLength+CRC_LENGTH+1); // DATALENGTH has already taken DATA_OFFSET into account, why do you need to + DATA_OFFSET here?
   SERIAL.flush();
+  Serial.write(packetSendArray,dataLength+CRC_LENGTH+1); 
+  Serial.println();
+  
+//
+//  if (fromComponentID == 2){
+//     Serial.write(packetSendArray, dataLength+CRC_LENGTH+1);
+//     Serial.println();
+//  }
+// 
 }
 
 void generateCRC(int CRCStart){
