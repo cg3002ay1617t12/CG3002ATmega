@@ -109,6 +109,16 @@ void setup() {
   pinMode(Ultra1Echo, INPUT);
   pinMode(Ultra1Vib, OUTPUT);
 
+  // INIT ULTRA2
+  pinMode(Ultra2Trig, OUTPUT);
+  pinMode(Ultra2Echo, INPUT);
+  pinMode(Ultra2Vib, OUTPUT);
+
+  // INIT ULTRA3
+  pinMode(Ultra3Trig, OUTPUT);
+  pinMode(Ultra3Echo, INPUT);
+  pinMode(Ultra3Vib, OUTPUT);
+
   // INIT IMU1
   imu1.init();
   imu1.enableDefault();
@@ -397,7 +407,7 @@ void sendUltra1soundDist(void *pvParameters) {
           distance = duration / ULTRA_RATIO;
           // Obstacle detected
           if (distance <= ULTRA_THRESHOLD and distance > 7){
-            Serial.print("Distance: ");
+            Serial.print("Distance Front: ");
             Serial.println(distance);
             digitalWrite(Ultra1Vib, 1);
           } else {
@@ -425,7 +435,7 @@ void sendUltra2soundDist(void *pvParameters) {
           distance = duration / ULTRA_RATIO;
           // Obstacle detected
           if (distance <= ULTRA_THRESHOLD and distance > 7){
-            Serial.print("Distance: ");
+            Serial.print("Distance Left: ");
             Serial.println(distance);
             digitalWrite(Ultra2Vib, 1);
           } else {
@@ -453,7 +463,7 @@ void sendUltra3soundDist(void *pvParameters) {
           distance = duration / ULTRA_RATIO;
           // Obstacle detected
           if (distance <= ULTRA_THRESHOLD and distance > 7){
-            Serial.print("Distance: ");
+            Serial.print("Distance Right: ");
             Serial.println(distance);
             digitalWrite(Ultra3Vib, 1);
           } else {
