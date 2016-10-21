@@ -35,10 +35,18 @@ L3G gyro1;
 #define DATA_OFFSET 4
 #define CRC_LENGTH 2
 
-// Ultrasound 1
-#define Ultra1Trig 8
-#define Ultra1Echo 7
-#define Ultra1Vib  5
+// Ultrasound 1 - MID
+#define Ultra1Trig 10
+#define Ultra1Echo 9
+#define Ultra1Vib  8
+// Ultrasound 2 - LEFT
+#define Ultra2Trig 7
+#define Ultra2Echo 6
+#define Ultra2Vib  5
+// ultrasound 3 - RIGHT
+#define Ultra3Trig 13
+#define Ultra3Echo 12
+#define Ultra3Vib  11
 
 #define VibrationMotor
 
@@ -81,9 +89,9 @@ void setup() {
   xSemaphore = xSemaphoreCreateMutex();
   xSemaphoreGive(xSemaphore);
   // setup serial ports
-  SERIAL.begin(115200);
+  SERIAL.begin(9600);
   while (!SERIAL); // to ensure that Serial 3 is setup
-  Serial.begin(115200);
+  Serial.begin(9600);
   while (!Serial);  // to ensure that Serial is setup
 
   // init(s) for sensors
@@ -149,6 +157,22 @@ void setup() {
     ,  128  // Stack size
     ,  NULL
     ,  4  // priority
+    ,  NULL );
+
+    xTaskCreate(
+    sendUltra2soundDist
+    ,  (const portCHAR *)"sendUltra1soundDist"   // A name just for humans
+    ,  128  // Stack size
+    ,  NULL
+    ,  5  // priority
+    ,  NULL );
+
+    xTaskCreate(
+    sendUltra3soundDist
+    ,  (const portCHAR *)"sendUltra1soundDist"   // A name just for humans
+    ,  128  // Stack size
+    ,  NULL
+    ,  6  // priority
     ,  NULL );
 
 
@@ -302,9 +326,7 @@ void sendIMUONECompassData(void *pvParameters) {
         }
       }
     // readyToSend = 0;
-    }
     vTaskDelay(5);
-  }
 }
 
 void sendIMUONEGyroData(void *pvParameters) {
@@ -378,19 +400,64 @@ void sendUltra1soundDist(void *pvParameters) {
             Serial.print("Distance: ");
             Serial.println(distance);
             digitalWrite(Ultra1Vib, 1);
-//            analogWrite(Ultra1Vib,(int)(255-(distance*255.0/ULTRA_THRESHOLD)));
-//            sprintf(packetSendArray+datalength,"%d", distance);
-//            if (distance > 99){
-//              datalength = DATA_OFFSET + 3;
-//            } else if (distance > 9) {
-//              datalength = DATA_OFFSET + 2;
-//            } else {
-//              datalength = DATA_OFFSET + 1;
-//            }
-//            frameAndSendPacket(4, datalength);
-//            digitWrite(Ultra1Vib, HIGH)
           } else {
             digitalWrite(Ultra1Vib,0);
+          }
+    }
+    vTaskDelay(5);
+  }
+}
+
+void sendUltra2soundDist(void *pvParameters) {
+  int datalength = 0;
+  int duration,distance;
+  float currheading = 0;
+  char tempCompass[6] = {0};
+  while(1){
+       if (readyToSend == '1'){
+          datalength = DATA_OFFSET;
+          digitalWrite(Ultra2Trig, LOW); 
+          vTaskDelay(ULTRA_PING_DURATION);
+          digitalWrite(Ultra2Trig, HIGH);
+          vTaskDelay(ULTRA_PING_DURATION);
+          digitalWrite(Ultra2Trig, LOW);
+          duration = pulseIn(Ultra2Echo, HIGH);
+          distance = duration / ULTRA_RATIO;
+          // Obstacle detected
+          if (distance <= ULTRA_THRESHOLD and distance > 7){
+            Serial.print("Distance: ");
+            Serial.println(distance);
+            digitalWrite(Ultra2Vib, 1);
+          } else {
+            digitalWrite(Ultra2Vib,0);
+          }
+    }
+    vTaskDelay(5);
+  }
+}
+
+void sendUltra3soundDist(void *pvParameters) {
+  int datalength = 0;
+  int duration,distance;
+  float currheading = 0;
+  char tempCompass[6] = {0};
+  while(1){
+       if (readyToSend == '1'){
+          datalength = DATA_OFFSET;
+          digitalWrite(Ultra3Trig, LOW); 
+          vTaskDelay(ULTRA_PING_DURATION);
+          digitalWrite(Ultra3Trig, HIGH);
+          vTaskDelay(ULTRA_PING_DURATION);
+          digitalWrite(Ultra3Trig, LOW);
+          duration = pulseIn(Ultra3Echo, HIGH);
+          distance = duration / ULTRA_RATIO;
+          // Obstacle detected
+          if (distance <= ULTRA_THRESHOLD and distance > 7){
+            Serial.print("Distance: ");
+            Serial.println(distance);
+            digitalWrite(Ultra3Vib, 1);
+          } else {
+            digitalWrite(Ultra3Vib,0);
           }
     }
     vTaskDelay(5);
