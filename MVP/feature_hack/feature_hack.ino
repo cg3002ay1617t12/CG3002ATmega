@@ -1,19 +1,41 @@
 #include <Wire.h>
 #include <LSM303.h>
 #include <L3G.h>
+#include <NewPing.h>
 
 LSM303 imu1;
 L3G gyro1;
 int duration,distance;
 
-#define ULTRA_RATIO 58.2
-#define ULTRA_THRESHOLD 50
-#define ULTRA_MIN 0
-#define ULTRA_MAX 1000
 
-#define Ultra1Trig 13 // green
-#define Ultra1Echo 12 // yellow
-#define Ultra1Vib  11 // blue
+#define ULTRA_THRESHOLD 50
+#define SONAR_NUM 3
+#define PING_INTERVAL 33 
+#define MAX_DISTANCE 200
+
+#define Ultra1Trig 12 // green
+#define Ultra1Echo 11 // yellow
+#define Ultra1Vib  10 // blue
+
+#define Ultra2Trig 9 // green
+#define Ultra2Echo 8 // yellow
+#define Ultra2Vib  7 // blue
+
+#define Ultra3Trig 6 // green
+#define Ultra3Echo 5 // yellow
+#define Ultra3Vib  4 // blue
+
+NewPing sonar[SONAR_NUM] = {
+  NewPing(Ultra1Trig, Ultra1Echo, MAX_DISTANCE),
+  NewPing(Ultra2Trig, Ultra2Echo, MAX_DISTANCE),
+  NewPing(Ultra3Trig, Ultra3Echo, MAX_DISTANCE)
+};
+
+int vibs[SONAR_NUM] = {10,7,4};
+
+unsigned long pingTimer[SONAR_NUM]; // When each pings.
+unsigned int cm[SONAR_NUM]; // Store ping distances.
+uint8_t currentSensor = 0; // Which sensor is active.
 
 void setup() {
   // put your setup code here, to run once:
@@ -23,8 +45,21 @@ void setup() {
 
   // ultrasound config
   pinMode(Ultra1Trig, OUTPUT);
-  pinMode(Ultra1Echo, OUTPUT);
   pinMode(Ultra1Echo, INPUT);
+  pinMode(Ultra1Vib , OUTPUT);
+  
+  pinMode(Ultra2Trig, OUTPUT);
+  pinMode(Ultra2Echo, INPUT);
+  pinMode(Ultra2Vib , OUTPUT);
+  
+  pinMode(Ultra3Trig, OUTPUT);
+  pinMode(Ultra3Echo, INPUT);
+  pinMode(Ultra3Vib, OUTPUT);
+
+  // ultrasound
+  pingTimer[0] = millis() + 75; // First ping start in ms.
+  for (uint8_t i = 1; i < SONAR_NUM; i++)
+    pingTimer[i] = pingTimer[i - 1] + PING_INTERVAL;
 
   // imu config
   imu1.init();
@@ -53,12 +88,12 @@ void loop() {
   double a_y = (imu1.a.y / 1600.0);
   double a_z = (imu1.a.z / 1600.0);
 
-  Serial.print(a_x);
-  Serial.print(",");
-  Serial.print(a_y);
-  Serial.print(",");
-  Serial.print(a_z);
-  Serial.print(",");
+//  Serial.print(a_x);
+//  Serial.print(",");
+//  Serial.print(a_y);
+//  Serial.print(",");
+//  Serial.print(a_z);
+//  Serial.print(",");
   // pi
   Serial3.print(a_x);
   Serial3.print(",");
@@ -78,12 +113,12 @@ void loop() {
   g_y = gyro1.g.y * 8.75/1000 + y_offset;
   g_z = gyro1.g.z * 8.75/1000 + z_offset;
 
-  Serial.print(g_x);
-  Serial.print(",");
-  Serial.print(g_y);
-  Serial.print(",");
-  Serial.print(g_z);
-  Serial.print(",");
+//  Serial.print(g_x);
+//  Serial.print(",");
+//  Serial.print(g_y);
+//  Serial.print(",");
+//  Serial.print(g_z);
+//  Serial.print(",");
   // pi
   Serial3.print(g_x);
   Serial3.print(",");
@@ -93,32 +128,79 @@ void loop() {
   Serial3.print(",");
   
   // heading
-  float currheading = imu1.heading((LSM303::vector<int>){0, 0, 1});
-  Serial.println(currheading);
+  float currheading = imu1.heading((LSM303::vector<int>){0, 0,  1});
+//  Serial.println(currheading);
   Serial3.println(currheading);
 
-  // ultra
-  digitalWrite(Ultra1Trig, LOW); 
-  delay(2);  
-  digitalWrite(Ultra1Trig, HIGH);   
-  delay(2);         
-  digitalWrite(Ultra1Trig, LOW);
-  duration = pulseIn(Ultra1Echo, HIGH);
-  distance = duration / ULTRA_RATIO;
+//  // ultra 1
+//  duration = sonar1.ping();
+//  distance = duration / US_ROUNDTRIP_CM;
+//
+//  if (distance < ULTRA_THRESHOLD && distance != 0){
+//      digitalWrite(Ultra1Vib,1);
+//      Serial.print("DistanceLeft: ");
+//      Serial.println(distance);
+//  } else{
+//     digitalWrite(Ultra1Vib,0);
+//  }
+//
+//  // ultra 2 right
+//  duration = sonar2.ping();
+//  distance = duration / US_ROUNDTRIP_CM;
+//
+//  if (distance < ULTRA_THRESHOLD && distance != 0){
+//      digitalWrite(Ultra2Vib,1);
+//      Serial.print("DistanceRight: ");
+//      Serial.println(distance);
+//  } else{
+//     digitalWrite(Ultra2Vib,0);
+//  }
+//
+//  // ultra 3 centre
+//  duration = sonar3.ping();
+//  distance = duration / US_ROUNDTRIP_CM;
+//
+//  if (distance < ULTRA_THRESHOLD && distance != 0){
+//      digitalWrite(Ultra3Vib,1);
+//      Serial.print("DistanceCentre: ");
+//      Serial.println(distance);
+//  } else{
+//     digitalWrite(Ultra3Vib,0);
+//  }
 
-  if (distance>ULTRA_MIN && ULTRA_MAX>distance){
-    if (distance <= ULTRA_THRESHOLD && distance > 10){
-      digitalWrite(Ultra1Vib,1);
-      Serial.print("Distance: ");
-      Serial.println(distance);
-//      Serial3.print("Distance: ");
-//      Serial3.println(distance);
-    } else {
-      digitalWrite(Ultra1Vib,0);
+  for (uint8_t i = 0; i < SONAR_NUM; i++) {
+    if (millis() >= pingTimer[i]) {
+      pingTimer[i] += PING_INTERVAL * SONAR_NUM;
+      if (i == 0 && currentSensor == SONAR_NUM - 1)
+        oneSensorCycle(); // Do something with results.
+      sonar[currentSensor].timer_stop();
+      currentSensor = i;
+      cm[currentSensor] = 0;
+      sonar[currentSensor].ping_timer(echoCheck);
     }
   }
-  
-  delay(1);
-  
-  
+  delay(20);
+}
+
+void echoCheck() { // If ping echo, set distance to array.
+  if (sonar[currentSensor].check_timer())
+    cm[currentSensor] = sonar[currentSensor].ping_result / US_ROUNDTRIP_CM;
+}
+
+void oneSensorCycle() { // Do something with the results.
+  for (uint8_t i = 0; i < SONAR_NUM; i++) {
+
+    if (cm[i] < ULTRA_THRESHOLD && cm[i] != 0){
+      digitalWrite(vibs[i],1);
+      Serial.print(i);
+      // 1 is centre motor centre ultra
+      // 2 is right motor right ultra
+      // 0 is left motor left ultrasound
+    Serial.print("=");
+    Serial.println(cm[i]);
+    } else {
+      digitalWrite(vibs[i],0);
+    }
+   
+  }
 }
