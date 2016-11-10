@@ -190,9 +190,17 @@ void echoCheck() { // If ping echo, set distance to array.
 void oneSensorCycle() { // Do something with the results.
   for (uint8_t i = 0; i < SONAR_NUM; i++) {
 
-    if (cm[i] < ULTRA_THRESHOLD && cm[i] != 0){
+    if (cm[i] < ULTRA_THRESHOLD && cm[i] != 0 && cm[i]>7){
       digitalWrite(vibs[i],1);
-      Serial.print(i);
+      if (i == 0){
+        Serial.print("left");
+      }
+      if (i == 1){
+        Serial.print("centre");
+      }
+      if (i == 2){
+        Serial.print("right");
+      }
       // 1 is centre motor centre ultra
       // 2 is right motor right ultra
       // 0 is left motor left ultrasound
